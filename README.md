@@ -3,15 +3,17 @@
 A sensor monitoring system built with GraphQL and PostgreSQL. Industrial plants have
 locations, locations have sensors, and sensors produce readings over time.
 
-This is a learning project: the SQL is written by hand with no ORM, and the goal is to
-understand each layer rather than to ship fast.
+A personal project pulling the pieces I work with into one system: schema design,
+hand-written SQL, a fully typed GraphQL layer, and analysis on top of the data. The data
+layer runs on plain `pg` with no ORM — a deliberate exercise in writing the SQL myself
+rather than delegating it.
 
 ## Status
 
 | Phase | State |
 |---|---|
-| Backend — GraphQL API | In progress |
-| Anomaly detection | Not started |
+| Backend — GraphQL API | Working |
+| Anomaly detection | Working |
 | Angular frontend | Not started |
 | Docker + CI/CD | Not started |
 | Python AI agent | Not started |
@@ -23,7 +25,7 @@ understand each layer rather than to ship fast.
 - **Apollo Server v5** — GraphQL runtime
 - **PostgreSQL** via the raw `pg` driver — no ORM, SQL written by hand
 - **GraphQL Code Generator** — resolver types derived from the schema
-- **Jest** + **ts-jest** — set up, tests not written yet
+- **Jest** + **ts-jest** — unit tests over the analysis layer
 
 ## Requirements
 
@@ -69,6 +71,25 @@ npm run dev
 The server starts at `http://localhost:4000/`, with Apollo Sandbox available in the
 browser at that address.
 
+## Tests
+
+```bash
+npm test
+```
+
+The suite covers `analytics/detectAnomalies.ts`, which is pure — no database, no server,
+no fixtures — so it runs in well under a second. Beyond the happy path it pins down the
+edge cases that are easy to regress: an empty batch, a batch where every value is
+identical, invalid thresholds, and samples too small for the requested threshold to be
+mathematically reachable.
+
+One caveat: `isolatedModules` makes ts-jest transpile without type checking, so a green
+test run does **not** mean the project compiles. Type errors surface separately:
+
+```bash
+npx tsc --noEmit
+```
+
 ## Regenerating types
 
 Resolver types are generated from the live schema, so **the dev server must already be
@@ -95,6 +116,7 @@ Run codegen after any schema change, and before writing resolvers for new fields
 | `sensors` | All sensors |
 | `sensor(id)` | One sensor, or `null` if it doesn't exist |
 | `readings(sensorId, limit)` | Readings for a sensor, newest first (`limit` defaults to 10) |
+| `anomalies(sensorId, limit, threshold)` | Readings more than `threshold` standard deviations from the mean of the last `limit` readings (`limit` defaults to 50, `threshold` to 3) |
 
 **Mutations**
 
@@ -134,30 +156,42 @@ message, with the full Postgres detail logged server-side and never sent to the 
 ```
 backend/
 ├── scripts/
-│   ├── init.sql            # Schema: roles, users, plants, locations, sensors, readings
-│   └── seed_base.sql       # Base data
+│   ├── init.sql                    # Schema: roles, users, plants, locations, sensors, readings
+│   └── seed_base.sql               # Base data
 ├── src/
+│   ├── analytics/
+│   │   ├── detectAnomalies.ts      # Z-score detection — pure, no I/O
+│   │   └── detectAnomalies.test.ts # Unit tests
 │   ├── db/
-│   │   ├── pool.ts         # pg connection pool from env vars
-│   │   ├── repository.ts   # Hand-written SQL, GraphQL-agnostic
-│   │   └── errors.ts       # NotFoundError domain error
+│   │   ├── pool.ts                 # pg connection pool from env vars
+│   │   ├── repository.ts           # Hand-written SQL, GraphQL-agnostic
+│   │   ├── types.ts                # Row shapes, shared without pulling in the pool
+│   │   └── errors.ts               # NotFoundError domain error
 │   ├── graphql/
-│   │   ├── errors.ts       # Constraint name to error code mapping
-│   │   └── errorHandling.ts# Apollo formatError hook
+│   │   ├── errors.ts               # Constraint name to error code mapping
+│   │   └── errorHandling.ts        # Apollo formatError hook
 │   ├── generated/
-│   │   └── types.ts        # Generated, do not edit by hand
-│   ├── schema.ts           # GraphQL type definitions
-│   ├── resolvers.ts        # Resolvers, typed via `satisfies Resolvers`
-│   └── index.ts            # Entry point
-└── codegen.yml
+│   │   └── types.ts                # Generated, do not edit by hand
+│   ├── scripts/
+│   │   └── simulate.ts             # Seeds a sensor with realistic reading history
+│   ├── schema.ts                   # GraphQL type definitions
+│   ├── resolvers.ts                # Resolvers, typed via `satisfies Resolvers`
+│   └── index.ts                    # Entry point
+├── codegen.yml
+├── jest.config.js
+└── tsconfig.json
 ```
+
+Three layers, each independent of the one above it: `db/` knows nothing about GraphQL,
+and `analytics/` knows nothing about either — it takes plain data and returns plain data,
+which is what keeps it testable without fixtures.
 
 ## Roadmap
 
-- [ ] `detectAnomalies` — a pure function over readings, no database, no GraphQL
-- [ ] Anomaly queries in the schema
-- [ ] `scripts/simulate.ts` — generate realistic reading history
-- [ ] Jest test suite
+- [x] `detectAnomalies` — a pure function over readings, no database, no GraphQL
+- [x] Anomaly queries in the schema
+- [x] `src/scripts/simulate.ts` — generate realistic reading history
+- [x] Jest test suite
 - [ ] Authentication (`sensors.created_by` is currently hardcoded)
 - [ ] Angular 20 frontend with apollo-angular
 - [ ] Docker + docker-compose

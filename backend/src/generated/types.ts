@@ -11,6 +11,15 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
+export type Anomaly = {
+  __typename?: 'Anomaly';
+  deviation: Scalars['Float']['output'];
+  readingId: Scalars['Int']['output'];
+  timestamp: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+  zScore: Scalars['Float']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   addReading: Reading;
@@ -49,9 +58,17 @@ export type MutationUpdateSensorArgs = {
 
 export type Query = {
   __typename?: 'Query';
+  anomalies: Array<Anomaly>;
   readings: Array<Reading>;
   sensor?: Maybe<Sensor>;
   sensors: Array<Sensor>;
+};
+
+
+export type QueryAnomaliesArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  sensorId: Scalars['Int']['input'];
+  threshold?: InputMaybe<Scalars['Float']['input']>;
 };
 
 
@@ -155,6 +172,7 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
+  Anomaly: ResolverTypeWrapper<Anomaly>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
@@ -167,6 +185,7 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
+  Anomaly: Anomaly;
   Boolean: Scalars['Boolean']['output'];
   Float: Scalars['Float']['output'];
   Int: Scalars['Int']['output'];
@@ -177,6 +196,14 @@ export type ResolversParentTypes = {
   String: Scalars['String']['output'];
 };
 
+export type AnomalyResolvers<ContextType = any, ParentType extends ResolversParentTypes['Anomaly'] = ResolversParentTypes['Anomaly']> = {
+  deviation?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  readingId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  timestamp?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  zScore?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+};
+
 export type MutationResolvers<ContextType = any, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addReading?: Resolver<ResolversTypes['Reading'], ParentType, ContextType, RequireFields<MutationAddReadingArgs, 'sensorId' | 'value'>>;
   createSensor?: Resolver<ResolversTypes['Sensor'], ParentType, ContextType, RequireFields<MutationCreateSensorArgs, 'locationId' | 'name' | 'type' | 'unit'>>;
@@ -185,6 +212,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
 };
 
 export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+  anomalies?: Resolver<Array<ResolversTypes['Anomaly']>, ParentType, ContextType, RequireFields<QueryAnomaliesArgs, 'limit' | 'sensorId' | 'threshold'>>;
   readings?: Resolver<Array<ResolversTypes['Reading']>, ParentType, ContextType, RequireFields<QueryReadingsArgs, 'limit' | 'sensorId'>>;
   sensor?: Resolver<Maybe<ResolversTypes['Sensor']>, ParentType, ContextType, RequireFields<QuerySensorArgs, 'id'>>;
   sensors?: Resolver<Array<ResolversTypes['Sensor']>, ParentType, ContextType>;
@@ -206,6 +234,7 @@ export type SensorResolvers<ContextType = any, ParentType extends ResolversParen
 };
 
 export type Resolvers<ContextType = any> = {
+  Anomaly?: AnomalyResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   Reading?: ReadingResolvers<ContextType>;

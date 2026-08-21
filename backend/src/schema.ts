@@ -24,9 +24,17 @@ export const typeDefs = `#graphql
     value: Float!
     recordedAt: String!
   }
+  type Anomaly {
+    readingId: Int!
+    timestamp: String!
+    value: Float!
+    deviation: Float!
+    zScore: Float!
+  }
 
   extend type Query {
     readings(sensorId: Int!, limit: Int = 10): [Reading!]!
+    anomalies(sensorId: Int!, limit: Int = 50, threshold: Float = 3): [Anomaly!]!
   }
 
   extend type Mutation {
