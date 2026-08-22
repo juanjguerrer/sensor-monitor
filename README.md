@@ -14,6 +14,7 @@ rather than delegating it.
 |---|---|
 | Backend — GraphQL API | Working |
 | Anomaly detection | Working |
+| Database migrations | Working |
 | Angular frontend | Not started |
 | Docker + CI/CD | Not started |
 | Python AI agent | Not started |
@@ -24,6 +25,7 @@ rather than delegating it.
   `exactOptionalPropertyTypes`)
 - **Apollo Server v5** — GraphQL runtime
 - **PostgreSQL** via the raw `pg` driver — no ORM, SQL written by hand
+- **node-pg-migrate** — versioned schema migrations, no ORM required
 - **GraphQL Code Generator** — resolver types derived from the schema
 - **Jest** + **ts-jest** — unit tests over the analysis layer
 
@@ -40,14 +42,6 @@ cd sensor-monitor/backend
 npm install
 ```
 
-Create the database and its schema:
-
-```bash
-createdb sensor_monitor
-psql -d sensor_monitor -f scripts/init.sql
-psql -d sensor_monitor -f scripts/seed_base.sql
-```
-
 Copy the env template and fill in your own credentials:
 
 ```bash
@@ -61,6 +55,25 @@ cp .env.example .env
 | `DB_NAME` | Database name |
 | `DB_USER` | Database user |
 | `DB_PASSWORD` | Database password |
+| `DATABASE_URL` | Full connection string, read by the migration tool |
+
+The application reads the five `DB_*` variables; `node-pg-migrate` reads `DATABASE_URL`
+only. Both describe the same database, so keep them in sync. If your password contains
+`@`, `/`, `:` or `#`, percent-encode it inside `DATABASE_URL`.
+
+Create the database, build the schema, and load the base data:
+
+```bash
+createdb sensor_monitor
+```
+
+```bash
+npm run migrate -- up
+```
+
+```bash
+psql -d sensor_monitor -f scripts/seed_base.sql
+```
 
 ## Running
 
@@ -70,6 +83,66 @@ npm run dev
 
 The server starts at `http://localhost:4000/`, with Apollo Sandbox available in the
 browser at that address.
+
+## Migrations
+
+The schema is versioned as an ordered list of migration files in `src/migrations/`, rather
+than a single schema script. `node-pg-migrate` keeps a `pgmigrations` table inside the
+database itself, holding one row per migration that has been applied. On every run it
+compares the files on disk against that table and applies only what is missing, in
+timestamp order. The database therefore knows its own version, and the same command works
+against a fresh database and an existing one.
+
+Apply everything outstanding:
+
+```bash
+npm run migrate -- up
+```
+
+Roll back the most recent migration:
+
+```bash
+npm run migrate -- down
+```
+
+Create a new one:
+
+```bash
+npx node-pg-migrate create some-change -j ts -m src/migrations
+```
+
+Migrations live under `src/` deliberately, so `tsc --noEmit` type-checks them alongside the
+rest of the code. All operations run inside a single transaction by default — a failure
+part-way through rolls back completely, so the database is never left half-migrated.
+
+**Don't write a `down` function.** When a migration exports only `up`, `node-pg-migrate`
+replays the operation stack backwards to derive the reverse automatically, which is both
+correct and self-maintaining. An exported empty `down` silently overrides that inference:
+the rollback would remove the row from `pgmigrations` while leaving every table in place,
+so the database would then disagree with its own version record.
+
+**`--dry-run` cannot be passed through `npm run`.** npm claims that flag for itself and
+drops it rather than forwarding it, even after `--`, so the migration runs for real. Call
+the binary directly instead:
+
+```bash
+npx node-pg-migrate -m src/migrations --envPath .env down --dry-run
+```
+
+### Referential integrity
+
+Delete behaviour is set explicitly on every foreign key rather than left to the default:
+
+| Relationship | On delete | Reasoning |
+|---|---|---|
+| `readings` → `sensors` | `CASCADE` | A reading is meaningless without its sensor |
+| `sensors` → `locations` | `RESTRICT` | A location holding sensors shouldn't be removable by accident |
+| `locations` → `plants` | `RESTRICT` | Same, one level up |
+| audit columns → `users` | `SET NULL` | Deleting a user shouldn't destroy the record they touched |
+
+`CASCADE` on readings is what lets `deleteSensor` run as a single statement. Every
+`SET NULL` sits on a nullable column — the combination of `NOT NULL` and `SET NULL` is
+accepted at table-creation time but fails later, at the moment a referenced row is deleted.
 
 ## Tests
 
@@ -156,9 +229,10 @@ message, with the full Postgres detail logged server-side and never sent to the 
 ```
 backend/
 ├── scripts/
-│   ├── init.sql                    # Schema: roles, users, plants, locations, sensors, readings
+│   ├── init.sql                    # Superseded by migrations — kept for reference only
 │   └── seed_base.sql               # Base data
 ├── src/
+│   ├── migrations/                 # Versioned schema changes, applied in timestamp order
 │   ├── analytics/
 │   │   ├── detectAnomalies.ts      # Z-score detection — pure, no I/O
 │   │   └── detectAnomalies.test.ts # Unit tests
@@ -186,12 +260,19 @@ Three layers, each independent of the one above it: `db/` knows nothing about Gr
 and `analytics/` knows nothing about either — it takes plain data and returns plain data,
 which is what keeps it testable without fixtures.
 
+`scripts/init.sql` is no longer the source of truth and is not maintained. The schema it
+describes predates the migration that replaced it, and the two have already diverged —
+`init.sql` uses `TIMESTAMP` where the migration uses `TIMESTAMPTZ`, and leaves delete
+behaviour at the default. Build databases with `npm run migrate -- up`, never from that
+file.
+
 ## Roadmap
 
 - [x] `detectAnomalies` — a pure function over readings, no database, no GraphQL
 - [x] Anomaly queries in the schema
 - [x] `src/scripts/simulate.ts` — generate realistic reading history
 - [x] Jest test suite
+- [x] Versioned schema migrations with node-pg-migrate
 - [ ] Authentication (`sensors.created_by` is currently hardcoded)
 - [ ] Angular 20 frontend with apollo-angular
 - [ ] Docker + docker-compose

@@ -10,7 +10,8 @@
     "test": "jest",
     "codegen": "graphql-codegen",
     "dev": "ts-node-dev src/index.ts",
-    "simulate": "ts-node src/scripts/simulate.ts"
+    "simulate": "ts-node src/scripts/simulate.ts",
+    "migrate": "node-pg-migrate -m src/migrations --envPath .env"
   },
   "dependencies": {
     "@apollo/server": "^5.5.1",
@@ -26,6 +27,7 @@
     "@types/node": "^26.2.0",
     "@types/pg": "^8.23.1",
     "jest": "^30.4.2",
+    "node-pg-migrate": "^9.0.0",
     "ts-jest": "^29.4.12",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3"
