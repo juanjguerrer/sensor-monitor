@@ -15,8 +15,9 @@ rather than delegating it.
 | Backend — GraphQL API | Working |
 | Anomaly detection | Working |
 | Database migrations | Working |
+| Docker + docker-compose | Working |
 | Angular frontend | Not started |
-| Docker + CI/CD | Not started |
+| CI/CD | Not started |
 | Python AI agent | Not started |
 
 ## Stack
@@ -28,23 +29,53 @@ rather than delegating it.
 - **node-pg-migrate** — versioned schema migrations, no ORM required
 - **GraphQL Code Generator** — resolver types derived from the schema
 - **Jest** + **ts-jest** — unit tests over the analysis layer
+- **Docker** + **docker-compose** — the API, the database and the migration step as
+  three containers
 
 ## Requirements
 
-- Node.js 22 or later
-- PostgreSQL 14 or later
+Either Docker, or a local toolchain:
 
-## Setup
+- Docker Desktop (or Docker Engine with the Compose plugin)
+- *or* Node.js 22+ and PostgreSQL 14+
+
+## Setup with Docker
+
+```bash
+git clone https://github.com/juanjguerrer/sensor-monitor.git
+cd sensor-monitor
+cp .env.example .env
+```
+
+The root `.env` is what Compose substitutes into `docker-compose.yml`. Note that
+`DB_HOST=db` — inside the Compose network the database is reached by its service name,
+not by `localhost`.
+
+```bash
+docker compose up
+```
+
+That builds the API image, starts Postgres, waits for it to become healthy, runs the
+migrations, seeds the base data, and only then starts the API. Reach it at
+**`http://localhost:4001/`**.
+
+The database is published on host port **5433**, not 5432, so it doesn't collide with a
+PostgreSQL you may already be running locally.
+
+> **Run Compose commands from the repository root.** Compose searches parent directories
+> for `docker-compose.yml`, so `docker compose up` appears to work from `backend/` — but
+> the `.env` used for `${...}` substitution is resolved against your *current* directory.
+> From `backend/` it picks up `backend/.env`, whose `DB_HOST=localhost` is correct for
+> running on your machine and wrong inside a container. The symptom is the migration
+> container failing with `ECONNREFUSED 127.0.0.1:5432`. `docker compose config` prints the
+> resolved values and settles it in one command.
+
+## Setup without Docker
 
 ```bash
 git clone https://github.com/juanjguerrer/sensor-monitor.git
 cd sensor-monitor/backend
 npm install
-```
-
-Copy the env template and fill in your own credentials:
-
-```bash
 cp .env.example .env
 ```
 
@@ -60,6 +91,11 @@ cp .env.example .env
 The application reads the five `DB_*` variables; `node-pg-migrate` reads `DATABASE_URL`
 only. Both describe the same database, so keep them in sync. If your password contains
 `@`, `/`, `:` or `#`, percent-encode it inside `DATABASE_URL`.
+
+There are two `.env` files and they are not interchangeable: `backend/.env` configures the
+application when you run it directly on your machine, where the database is at
+`localhost`; the root `.env` configures Compose, where it is at `db`. Same keys, different
+values, by necessity.
 
 Create the database, build the schema, and load the base data:
 
@@ -83,6 +119,66 @@ npm run dev
 
 The server starts at `http://localhost:4000/`, with Apollo Sandbox available in the
 browser at that address.
+
+Note that this is a *different* server from the containerized one on port 4001, backed by
+a *different* database. Running both at once is a reliable way to confuse yourself about
+where your data went.
+
+## Docker
+
+Four services, defined in `docker-compose.yml`:
+
+| Service | Image | Role |
+|---|---|---|
+| `db` | `postgres:15` | Database. Data persists in the `db_data` named volume. |
+| `migrate` | built from the Dockerfile's `builder` stage | Runs the migrations once, then exits |
+| `seed` | `postgres:15` | Runs `seed_base.sql` through `psql`, then exits |
+| `backend` | built from the Dockerfile's final stage | The API |
+
+Startup is ordered by `depends_on` conditions rather than by luck: `migrate` waits for
+`db` to pass its `pg_isready` healthcheck, `seed` waits for `migrate` to exit
+successfully, and `backend` waits on the same condition. A failed migration therefore
+stops the stack instead of leaving the API serving against a stale schema.
+
+`seed` reuses the `postgres` image rather than the application image, because `psql` is a
+PostgreSQL client and does not exist in a Node image. It reaches the SQL file through a
+read-only bind mount of `backend/scripts`.
+
+| | Host port | Container port |
+|---|---|---|
+| API | 4001 | 4000 |
+| PostgreSQL | 5433 | 5432 |
+
+The host ports are chosen to avoid colliding with a local Node server and a local
+PostgreSQL. Containers reach each other over the internal network on the *container*
+ports — `db:5432` — regardless of what is published.
+
+The Dockerfile is multi-stage. The `builder` stage installs every dependency and compiles
+TypeScript; the final stage keeps only production dependencies and `dist/`, so the runtime
+image ships without a compiler. `migrate` deliberately targets `builder`, because
+`node-pg-migrate` is a devDependency and does not exist in the final image.
+
+```bash
+docker compose up -d
+```
+
+```bash
+docker compose logs -f backend
+```
+
+`docker compose down` stops everything and keeps your data. `docker compose down -v` also
+deletes the volume, which is how you force a genuinely fresh database — necessary if you
+change `POSTGRES_USER` or `POSTGRES_PASSWORD`, since Postgres only reads those when the
+volume is empty.
+
+Seeding runs automatically. `seed_base.sql` is written to be idempotent — every insert is
+guarded by `WHERE NOT EXISTS` — so re-running the stack neither fails nor duplicates rows.
+
+One thing that misleads: the API logs `http://localhost:4000/` on startup. That is printed
+from inside the container, where the app really is on 4000, and it knows nothing about the
+port mapping. From your machine it is 4001. `NODE_ENV=production` is also set, so Apollo
+serves its production landing page rather than Sandbox — the endpoint still answers POSTed
+queries normally.
 
 ## Migrations
 
@@ -251,9 +347,12 @@ backend/
 │   ├── schema.ts                   # GraphQL type definitions
 │   ├── resolvers.ts                # Resolvers, typed via `satisfies Resolvers`
 │   └── index.ts                    # Entry point
+├── Dockerfile                      # Multi-stage: builder, then a slim runtime
+├── .dockerignore
 ├── codegen.yml
 ├── jest.config.js
 └── tsconfig.json
+docker-compose.yml                  # db + migrate + backend
 ```
 
 Three layers, each independent of the one above it: `db/` knows nothing about GraphQL,
@@ -273,8 +372,8 @@ file.
 - [x] `src/scripts/simulate.ts` — generate realistic reading history
 - [x] Jest test suite
 - [x] Versioned schema migrations with node-pg-migrate
+- [x] Docker + docker-compose, with automated migrations and seeding
 - [ ] Authentication (`sensors.created_by` is currently hardcoded)
 - [ ] Angular 20 frontend with apollo-angular
-- [ ] Docker + docker-compose
 - [ ] GitHub Actions CI/CD
 - [ ] Python agent for anomaly detection

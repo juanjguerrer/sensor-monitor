@@ -11,7 +11,11 @@
     "codegen": "graphql-codegen",
     "dev": "ts-node-dev src/index.ts",
     "simulate": "ts-node src/scripts/simulate.ts",
-    "migrate": "node-pg-migrate -m src/migrations --envPath .env"
+    "migrate": "node-pg-migrate -m src/migrations --envPath .env",
+    "migrate:up": "node-pg-migrate up -m src/migrations --envPath .env",
+    "migrate:down": "node-pg-migrate down -m src/migrations --envPath .env",
+    "migrate:create": "node-pg-migrate create -m src/migrations --envPath .env",
+    "build": "tsc"
   },
   "dependencies": {
     "@apollo/server": "^5.5.1",
