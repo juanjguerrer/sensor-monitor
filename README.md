@@ -16,8 +16,9 @@ rather than delegating it.
 | Anomaly detection | Working |
 | Database migrations | Working |
 | Docker + docker-compose | Working |
+| GitHub Actions CI | Working |
 | Angular frontend | Not started |
-| CI/CD | Not started |
+| Continuous deployment | Not started |
 | Python AI agent | Not started |
 
 ## Stack
@@ -31,6 +32,7 @@ rather than delegating it.
 - **Jest** + **ts-jest** — unit tests over the analysis layer
 - **Docker** + **docker-compose** — the API, the database and the migration step as
   three containers
+- **GitHub Actions** — type check, tests, migrations against a real Postgres, image build
 
 ## Requirements
 
@@ -259,6 +261,42 @@ test run does **not** mean the project compiles. Type errors surface separately:
 npx tsc --noEmit
 ```
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request against `master`:
+
+| Step | What it proves |
+|---|---|
+| `npm ci` | The lockfile installs cleanly |
+| `npm run migrate:up` | Every migration applies to an **empty** database |
+| `psql -f seed_base.sql` | The seed runs |
+| the same command again | The seed is idempotent |
+| `npx tsc --noEmit` | The project compiles |
+| `npm test` | Tests pass |
+| `docker build` | The Dockerfile still works |
+
+The migration step is the one that earns its place. Migrations are hand-written and only
+ever applied forwards on a developer machine, so a mistake stays invisible until something
+builds a database from scratch. CI does exactly that on every push, against a real
+PostgreSQL service container.
+
+Running the seed twice is a deliberate assertion, not a copy-paste error: `seed_base.sql`
+executes on every `docker compose up`, so idempotency is a property it has to keep. The
+check is partial, though — a missing guard fails loudly on `roles` and `users`, which have
+`UNIQUE` constraints, but would silently duplicate rows on `plants`, `locations` and
+`sensors`, which don't.
+
+Two things behave differently from `docker-compose.yml`, both for the same reason — the
+job runs *on* the runner rather than inside the container network:
+
+- `DATABASE_URL` points at `localhost:5432`, not at a service name
+- database credentials are inline throwaway values, not secrets; the service exists for
+  the duration of the job and is unreachable from outside the runner
+
+A commented-out BuildKit layer-cache block sits at the end of the workflow. It is off
+deliberately: the cache has to be uploaded and downloaded on every run, which for an image
+this size costs about as much as it saves.
+
 ## Regenerating types
 
 Resolver types are generated from the live schema, so **the dev server must already be
@@ -352,7 +390,8 @@ backend/
 ├── codegen.yml
 ├── jest.config.js
 └── tsconfig.json
-docker-compose.yml                  # db + migrate + backend
+docker-compose.yml                  # db + migrate + seed + backend
+.github/workflows/ci.yml            # Type check, tests, migrations, image build
 ```
 
 Three layers, each independent of the one above it: `db/` knows nothing about GraphQL,
@@ -373,7 +412,8 @@ file.
 - [x] Jest test suite
 - [x] Versioned schema migrations with node-pg-migrate
 - [x] Docker + docker-compose, with automated migrations and seeding
+- [x] GitHub Actions CI — type check, tests, migrations against a real Postgres
 - [ ] Authentication (`sensors.created_by` is currently hardcoded)
 - [ ] Angular 20 frontend with apollo-angular
-- [ ] GitHub Actions CI/CD
+- [ ] Continuous deployment
 - [ ] Python agent for anomaly detection
