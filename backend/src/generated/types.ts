@@ -1,4 +1,5 @@
 import { GraphQLResolveInfo } from 'graphql';
+import { Sensor as SensorRow, Location as LocationRow } from '../db/types';
 import { Context } from '../graphql/context';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -19,6 +20,15 @@ export type Anomaly = {
   timestamp: Scalars['String']['output'];
   value: Scalars['Float']['output'];
   zScore: Scalars['Float']['output'];
+};
+
+export type Location = {
+  __typename?: 'Location';
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  plantId: Scalars['Int']['output'];
+  updatedAt: Scalars['String']['output'];
 };
 
 export type LoginResponse = {
@@ -106,6 +116,7 @@ export type Reading = {
 export type Sensor = {
   __typename?: 'Sensor';
   id: Scalars['Int']['output'];
+  location: Location;
   locationId: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   type: Scalars['String']['output'];
@@ -189,11 +200,12 @@ export type ResolversTypes = {
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  Location: ResolverTypeWrapper<LocationRow>;
   LoginResponse: ResolverTypeWrapper<LoginResponse>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Reading: ResolverTypeWrapper<Reading>;
-  Sensor: ResolverTypeWrapper<Sensor>;
+  Sensor: ResolverTypeWrapper<SensorRow>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
 };
 
@@ -203,11 +215,12 @@ export type ResolversParentTypes = {
   Boolean: Scalars['Boolean']['output'];
   Float: Scalars['Float']['output'];
   Int: Scalars['Int']['output'];
+  Location: LocationRow;
   LoginResponse: LoginResponse;
   Mutation: Record<PropertyKey, never>;
   Query: Record<PropertyKey, never>;
   Reading: Reading;
-  Sensor: Sensor;
+  Sensor: SensorRow;
   String: Scalars['String']['output'];
 };
 
@@ -217,6 +230,14 @@ export type AnomalyResolvers<ContextType = Context, ParentType extends Resolvers
   timestamp?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   value?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   zScore?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+};
+
+export type LocationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Location'] = ResolversParentTypes['Location']> = {
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  plantId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  updatedAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type LoginResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LoginResponse'] = ResolversParentTypes['LoginResponse']> = {
@@ -247,6 +268,7 @@ export type ReadingResolvers<ContextType = Context, ParentType extends Resolvers
 
 export type SensorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Sensor'] = ResolversParentTypes['Sensor']> = {
   id?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  location?: Resolver<ResolversTypes['Location'], ParentType, ContextType>;
   locationId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -255,6 +277,7 @@ export type SensorResolvers<ContextType = Context, ParentType extends ResolversP
 
 export type Resolvers<ContextType = Context> = {
   Anomaly?: AnomalyResolvers<ContextType>;
+  Location?: LocationResolvers<ContextType>;
   LoginResponse?: LoginResponseResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;

@@ -251,11 +251,46 @@ accepted at table-creation time but fails later, at the moment a referenced row 
 npm test
 ```
 
-The suite covers `analytics/detectAnomalies.ts`, which is pure — no database, no server,
-no fixtures — so it runs in well under a second. Beyond the happy path it pins down the
-edge cases that are easy to regress: an empty batch, a batch where every value is
-identical, invalid thresholds, and samples too small for the requested threshold to be
-mathematically reachable.
+90 tests across 8 files, in about two seconds. **Nothing in the suite touches PostgreSQL
+and nothing opens a socket** — the repository is mocked at the boundary, which is possible
+only because `db/` takes plain values rather than request-scoped objects.
+
+| File | Covers |
+|---|---|
+| `analytics/detectAnomalies.test.ts` | Z-score detection: empty batches, zero-variance batches, invalid thresholds, samples too small for the threshold to be reachable |
+| `auth/password.test.ts` | Hashing and comparison, random salts, and that an unusable stored hash returns false instead of throwing |
+| `auth/token.test.ts` | Signing and verification, plus every rejection path: expired, wrong secret, malformed, and correctly signed tokens with a missing or non-numeric `userId` |
+| `graphql/context.test.ts` | Header parsing, anonymous requests, and that a rejected token produces `UNAUTHENTICATED` with HTTP 401 |
+| `graphql/guards.test.ts` | `requireUser` returns the id or throws |
+| `graphql/errorHandling.test.ts` | Constraint-to-code mapping, which errors get logged, and that Postgres detail never reaches the client |
+| `resolvers.test.ts` | Resolver logic against a mocked repository, including login |
+| `schema.auth.test.ts` | Every field in the schema, driven through Apollo in-process |
+
+Three of these assert properties that are otherwise invisible:
+
+- **Nothing reaches the data layer on a rejected request.** `schema.auth.test.ts` runs all
+  eight guarded fields anonymously and then asserts every repository function was never
+  called. That's the difference between refusing a request and filtering results after the
+  query has already run.
+- **Postgres detail never leaks.** `errorHandling.test.ts` serialises the formatted error
+  and asserts the constraint's `detail` string does not appear in it.
+- **Bad credentials and a missing token share a code but not a message** — so a client can
+  tell "log in" from "your password was wrong", while nothing reveals which half of the
+  credentials failed.
+
+`schema.auth.test.ts` is the one that earns its keep over time: it drives real operations
+through `ApolloServer.executeOperation`, so a field added to `schema.ts` without a
+`requireUser` guard fails the suite rather than shipping unprotected.
+
+Two things worth knowing if you extend the suite:
+
+`auth/token.ts` throws at import time when `JWT_SECRET` is missing, and imports are
+hoisted — so setting the variable inside a test file is too late. `jest.setup.ts` sets it
+via Jest's `setupFiles`, which runs before any test module loads.
+
+Codegen marks arguments with schema defaults as **required** (`RequireFields<…, 'limit'>`),
+because GraphQL fills defaults before a resolver runs. Calling a resolver directly in a
+test means passing them explicitly.
 
 One caveat: `isolatedModules` makes ts-jest transpile without type checking, so a green
 test run does **not** mean the project compiles. Type errors surface separately:
@@ -275,7 +310,7 @@ npx tsc --noEmit
 | `psql -f seed_base.sql` | The seed runs |
 | the same command again | The seed is idempotent |
 | `npx tsc --noEmit` | The project compiles |
-| `npm test` | Tests pass |
+| `npm test` | 90 tests pass, including that every schema field refuses anonymous callers |
 | `docker build` | The Dockerfile still works |
 
 The migration step is the one that earns its place. Migrations are hand-written and only
@@ -436,24 +471,32 @@ backend/
 │   │   └── errors.ts               # NotFoundError domain error
 │   ├── auth/
 │   │   ├── password.ts             # bcrypt hash / compare — pure
+│   │   ├── password.test.ts
 │   │   ├── token.ts                # JWT sign / verify — pure
+│   │   ├── token.test.ts
 │   │   └── errors.ts               # Auth domain errors
 │   ├── graphql/
 │   │   ├── context.ts              # Per-request auth context
+│   │   ├── context.test.ts
 │   │   ├── guards.ts               # requireUser
+│   │   ├── guards.test.ts
 │   │   ├── errors.ts               # Constraint name to error code mapping
-│   │   └── errorHandling.ts        # Apollo formatError hook
+│   │   ├── errorHandling.ts        # Apollo formatError hook
+│   │   └── errorHandling.test.ts
 │   ├── generated/
 │   │   └── types.ts                # Generated, do not edit by hand
 │   ├── scripts/
 │   │   └── simulate.ts             # Seeds a sensor with realistic reading history
 │   ├── schema.ts                   # GraphQL type definitions
+│   ├── schema.auth.test.ts         # Every field refuses an anonymous caller
 │   ├── resolvers.ts                # Resolvers, typed via `satisfies Resolvers`
+│   ├── resolvers.test.ts
 │   └── index.ts                    # Entry point
 ├── Dockerfile                      # Multi-stage: builder, then a slim runtime
 ├── .dockerignore
 ├── codegen.yml
 ├── jest.config.js
+├── jest.setup.ts                   # Sets JWT_SECRET before test modules load
 └── tsconfig.json
 docker-compose.yml                  # db + migrate + seed + backend
 .github/workflows/ci.yml            # Type check, tests, migrations, image build
@@ -475,7 +518,7 @@ file.
 - [x] `detectAnomalies` — a pure function over readings, no database, no GraphQL
 - [x] Anomaly queries in the schema
 - [x] `src/scripts/simulate.ts` — generate realistic reading history
-- [x] Jest test suite
+- [x] Jest test suite — 90 tests, no database and no socket
 - [x] Versioned schema migrations with node-pg-migrate
 - [x] Docker + docker-compose, with automated migrations and seeding
 - [x] GitHub Actions CI — type check, tests, migrations against a real Postgres

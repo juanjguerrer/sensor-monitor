@@ -23,4 +23,11 @@ export interface User {
   updatedAt: Date;
 }
 
+export interface Location {
+  id: number;
+  name: string;
+  plantId: number;
+  description: string | null;
+}
+
 export type UserCredentials = Pick<User, 'id' | 'passwordHash'>;

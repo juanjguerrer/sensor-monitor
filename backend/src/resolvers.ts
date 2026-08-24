@@ -1,11 +1,12 @@
 import { GraphQLError } from 'graphql';
 import { detectAnomalies, maxZScore } from './analytics/detectAnomalies';
-import { addReading, createSensor, deleteSensor, findUserByUsername, getSensorById, listReadings, listSensors, updateSensor } from './db/repository';
+import { addReading, createSensor, deleteSensor, findUserByUsername, getLocationById, getSensorById, listReadings, listSensors, updateSensor } from './db/repository';
 import type { Resolvers } from './generated/types';
 import { sign } from './auth/token';
 import { comparePassword } from './auth/password';
 import { InvalidCredentialsError, UnauthenticatedError } from './auth/errors';
 import { requireUser } from './graphql/guards';
+import { NotFoundError } from './db/errors';
 
 // A real bcrypt hash. Used when the username doesn't exist, so a failed login
 // takes the same ~70ms either way. bcrypt only needs the salt (first 29 chars)
@@ -15,15 +16,15 @@ const DUMMY_PASSWORD_HASH = '$2b$10$CwTycUXWue0Thq9StjUM0uJ8Q1P5h6Z1Z1Z1Z1Z1Z1Z1
 export const resolvers = {
   Query: {
     sensors: async (_, _2, context) => {
-      const _3 = requireUser(context);
+      requireUser(context);
       return await listSensors();
     },
     sensor: async (_, { id }, context) => {
-      const _2 = requireUser(context);
+      requireUser(context);
       return await getSensorById(id);
     },
     readings: async (_, { sensorId, limit }, context) => {
-      const _2 = requireUser(context);
+      requireUser(context);
       const readings = await listReadings(sensorId, limit ?? 10
       );
       return readings.map(reading => ({
@@ -32,7 +33,7 @@ export const resolvers = {
       }));
     },
     anomalies: async (_, { sensorId, limit, threshold }, context) => {
-      const _2 = requireUser(context);
+      requireUser(context);
       const t = threshold ?? 3;
       if (t <= 0 || t > 10) {
         throw new GraphQLError(`Threshold must be a positive number greater than 0 and less than or equal to 10.`, {
@@ -68,11 +69,11 @@ export const resolvers = {
       return await updateSensor({ id, name, locationId, unit, type }, userId);
     },
     deleteSensor: async (_, {id}, context) => {
-      const userId = requireUser(context);
+      requireUser(context);
       return await deleteSensor(id);
     },
     addReading: async (_, {sensorId, value}, context) => {
-      const userId = requireUser(context);
+      requireUser(context);
       const newReading = await addReading(sensorId, value);
       return { ...newReading, recordedAt: newReading.recordedAt.toISOString() };
     },
@@ -85,6 +86,15 @@ export const resolvers = {
       }
       const token = sign(user.id);
       return { token };
+    }
+  },
+  Sensor:  {
+    location: async (sensor) => {
+      const location = await getLocationById(sensor.locationId);
+      if (!location) {
+        throw new NotFoundError('Location', sensor.locationId);
+      }
+      return location;
     }
   },
 } satisfies Resolvers;

@@ -5,6 +5,15 @@ export const typeDefs = `#graphql
     locationId: Int!
     unit: String!
     type: String!
+    location: Location!
+  }
+
+  type Location {
+    id: Int!
+    name: String!
+    plantId: Int!
+    description: String
+    updatedAt: String!
   }
 
   type Query {

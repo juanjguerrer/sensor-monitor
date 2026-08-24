@@ -3,6 +3,9 @@ generates:
   ./src/generated/types.ts:
     config:
       contextType: ../graphql/context#Context
+      mappers:
+        Sensor: ../db/types#Sensor as SensorRow
+        Location: ../db/types#Location as LocationRow
     plugins:
       - typescript
       - typescript-resolvers
