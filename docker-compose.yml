@@ -9,6 +9,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_PORT: ${DB_PORT}
       NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "4001:4000"
     depends_on:

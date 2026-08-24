@@ -1,6 +1,8 @@
 schema: 'http://localhost:4000/'
 generates:
   ./src/generated/types.ts:
+    config:
+      contextType: ../graphql/context#Context
     plugins:
       - typescript
       - typescript-resolvers

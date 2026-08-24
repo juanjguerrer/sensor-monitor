@@ -40,4 +40,12 @@ export const typeDefs = `#graphql
   extend type Mutation {
     addReading(sensorId: Int!, value: Float!): Reading!
   }
+
+  type LoginResponse {
+    token: String!
+  }
+
+  extend type Mutation {
+    login(username: String!, password: String!): LoginResponse!
+  }
 `;

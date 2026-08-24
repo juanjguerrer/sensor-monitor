@@ -1,4 +1,5 @@
 import { GraphQLResolveInfo } from 'graphql';
+import { Context } from '../graphql/context';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type RequireFields<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
@@ -20,11 +21,17 @@ export type Anomaly = {
   zScore: Scalars['Float']['output'];
 };
 
+export type LoginResponse = {
+  __typename?: 'LoginResponse';
+  token: Scalars['String']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   addReading: Reading;
   createSensor: Sensor;
   deleteSensor: Scalars['Int']['output'];
+  login: LoginResponse;
   updateSensor: Sensor;
 };
 
@@ -45,6 +52,12 @@ export type MutationCreateSensorArgs = {
 
 export type MutationDeleteSensorArgs = {
   id: Scalars['Int']['input'];
+};
+
+
+export type MutationLoginArgs = {
+  password: Scalars['String']['input'];
+  username: Scalars['String']['input'];
 };
 
 
@@ -176,6 +189,7 @@ export type ResolversTypes = {
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  LoginResponse: ResolverTypeWrapper<LoginResponse>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Reading: ResolverTypeWrapper<Reading>;
@@ -189,6 +203,7 @@ export type ResolversParentTypes = {
   Boolean: Scalars['Boolean']['output'];
   Float: Scalars['Float']['output'];
   Int: Scalars['Int']['output'];
+  LoginResponse: LoginResponse;
   Mutation: Record<PropertyKey, never>;
   Query: Record<PropertyKey, never>;
   Reading: Reading;
@@ -196,7 +211,7 @@ export type ResolversParentTypes = {
   String: Scalars['String']['output'];
 };
 
-export type AnomalyResolvers<ContextType = any, ParentType extends ResolversParentTypes['Anomaly'] = ResolversParentTypes['Anomaly']> = {
+export type AnomalyResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Anomaly'] = ResolversParentTypes['Anomaly']> = {
   deviation?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   readingId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   timestamp?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -204,28 +219,33 @@ export type AnomalyResolvers<ContextType = any, ParentType extends ResolversPare
   zScore?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 };
 
-export type MutationResolvers<ContextType = any, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+export type LoginResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LoginResponse'] = ResolversParentTypes['LoginResponse']> = {
+  token?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addReading?: Resolver<ResolversTypes['Reading'], ParentType, ContextType, RequireFields<MutationAddReadingArgs, 'sensorId' | 'value'>>;
   createSensor?: Resolver<ResolversTypes['Sensor'], ParentType, ContextType, RequireFields<MutationCreateSensorArgs, 'locationId' | 'name' | 'type' | 'unit'>>;
   deleteSensor?: Resolver<ResolversTypes['Int'], ParentType, ContextType, RequireFields<MutationDeleteSensorArgs, 'id'>>;
+  login?: Resolver<ResolversTypes['LoginResponse'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'password' | 'username'>>;
   updateSensor?: Resolver<ResolversTypes['Sensor'], ParentType, ContextType, RequireFields<MutationUpdateSensorArgs, 'id' | 'locationId' | 'name' | 'type' | 'unit'>>;
 };
 
-export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   anomalies?: Resolver<Array<ResolversTypes['Anomaly']>, ParentType, ContextType, RequireFields<QueryAnomaliesArgs, 'limit' | 'sensorId' | 'threshold'>>;
   readings?: Resolver<Array<ResolversTypes['Reading']>, ParentType, ContextType, RequireFields<QueryReadingsArgs, 'limit' | 'sensorId'>>;
   sensor?: Resolver<Maybe<ResolversTypes['Sensor']>, ParentType, ContextType, RequireFields<QuerySensorArgs, 'id'>>;
   sensors?: Resolver<Array<ResolversTypes['Sensor']>, ParentType, ContextType>;
 };
 
-export type ReadingResolvers<ContextType = any, ParentType extends ResolversParentTypes['Reading'] = ResolversParentTypes['Reading']> = {
+export type ReadingResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Reading'] = ResolversParentTypes['Reading']> = {
   id?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   recordedAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   sensorId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   value?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 };
 
-export type SensorResolvers<ContextType = any, ParentType extends ResolversParentTypes['Sensor'] = ResolversParentTypes['Sensor']> = {
+export type SensorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Sensor'] = ResolversParentTypes['Sensor']> = {
   id?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   locationId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -233,8 +253,9 @@ export type SensorResolvers<ContextType = any, ParentType extends ResolversParen
   unit?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
-export type Resolvers<ContextType = any> = {
+export type Resolvers<ContextType = Context> = {
   Anomaly?: AnomalyResolvers<ContextType>;
+  LoginResponse?: LoginResponseResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   Reading?: ReadingResolvers<ContextType>;

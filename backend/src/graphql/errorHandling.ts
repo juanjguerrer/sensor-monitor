@@ -3,6 +3,7 @@ import { DatabaseError } from 'pg';
 import type { GraphQLFormattedError } from 'graphql';
 import { mapDbError } from './errors';
 import { NotFoundError } from '../db/errors';
+import { InvalidCredentialsError, UnauthenticatedError } from '../auth/errors';
 
 export function formatError(
   formattedError: GraphQLFormattedError,
@@ -46,6 +47,26 @@ export function formatError(
       extensions: {
         ...formattedError.extensions,
         code,
+      },
+    };
+  }
+  if (original instanceof InvalidCredentialsError) {
+    return {
+      ...formattedError,
+      message: 'Invalid username or password',
+      extensions: {
+        ...formattedError.extensions,
+        code: 'UNAUTHENTICATED',
+      },
+    };
+  }
+  if (original instanceof UnauthenticatedError) {
+    return {
+      ...formattedError,
+      message: 'Unauthenticated',
+      extensions: {
+        ...formattedError.extensions,
+        code: 'UNAUTHENTICATED',
       },
     };
   }

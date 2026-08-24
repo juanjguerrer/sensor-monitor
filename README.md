@@ -15,6 +15,7 @@ rather than delegating it.
 | Backend — GraphQL API | Working |
 | Anomaly detection | Working |
 | Database migrations | Working |
+| Authentication | Working |
 | Docker + docker-compose | Working |
 | GitHub Actions CI | Working |
 | Angular frontend | Not started |
@@ -28,6 +29,7 @@ rather than delegating it.
 - **Apollo Server v5** — GraphQL runtime
 - **PostgreSQL** via the raw `pg` driver — no ORM, SQL written by hand
 - **node-pg-migrate** — versioned schema migrations, no ORM required
+- **jsonwebtoken** + **bcrypt** — JWT authentication, hashed passwords
 - **GraphQL Code Generator** — resolver types derived from the schema
 - **Jest** + **ts-jest** — unit tests over the analysis layer
 - **Docker** + **docker-compose** — the API, the database and the migration step as
@@ -89,6 +91,7 @@ cp .env.example .env
 | `DB_USER` | Database user |
 | `DB_PASSWORD` | Database password |
 | `DATABASE_URL` | Full connection string, read by the migration tool |
+| `JWT_SECRET` | Signing key for auth tokens. The app refuses to start without it. |
 
 The application reads the five `DB_*` variables; `node-pg-migrate` reads `DATABASE_URL`
 only. Both describe the same database, so keep them in sync. If your password contains
@@ -333,8 +336,57 @@ Run codegen after any schema change, and before writing resolvers for new fields
 | `updateSensor(id, name, locationId, unit, type)` | The updated sensor |
 | `deleteSensor(id)` | The deleted sensor's id |
 | `addReading(sensorId, value)` | The created reading |
+| `login(username, password)` | `{ token }` — the only field callable without a token |
 
 Timestamps cross the wire as ISO 8601 strings.
+
+**Every field except `login` requires authentication.** Send the token from `login` as
+`Authorization: Bearer <token>`; without it the request is rejected with `UNAUTHENTICATED`.
+
+## Authentication
+
+Stateless JWT. `login` verifies a password against `users.password_hash` with bcrypt and
+returns a signed token carrying the user id; every other field requires that token.
+
+The seed creates one user — `admin` / `admin123`, for local development only. Tokens
+expire after an hour.
+
+```
+auth/password.ts   hash / compare — pure, no I/O
+auth/token.ts      sign / verify  — pure, no I/O
+auth/errors.ts     domain errors
+graphql/context.ts reads the header, produces { userId: number | null }
+graphql/guards.ts  requireUser(context): number
+```
+
+`auth/` stays pure and knows nothing about HTTP or the database, so both modules unit-test
+without fixtures. `context.ts` runs once per request and is the only place that touches the
+`Authorization` header. Resolvers call `requireUser(context)`, which returns a `number` —
+the return type is what narrows `number | null`, so no resolver repeats the null check.
+
+`db/` never sees any of this. `createSensor` takes a plain `userId: number`, which is why
+`scripts/simulate.ts` still works without inventing a fake request.
+
+**Three deliberate details:**
+
+`token.ts` throws at import time if `JWT_SECRET` is missing, rather than defaulting. A
+signing key with a fallback value is worse than no key at all — everything appears to work
+while anyone holding the default can forge tokens.
+
+`verify` inspects the decoded payload at runtime instead of asserting its type. A valid
+signature proves the token was issued by this server; it does not prove the payload still
+has the shape the current code expects. A token issued an hour ago, after a field rename,
+verifies fine and carries the wrong shape.
+
+`login` compares against a dummy hash when the username doesn't exist, so a failed login
+takes the same ~70ms either way. Returning early would let an attacker enumerate valid
+usernames by timing alone.
+
+**Where errors are born matters.** `auth/` raises plain domain errors, translated centrally
+in `formatError`. But `context.ts` throws a `GraphQLError` directly — it has to, because
+`formatError` shapes the response body while the HTTP status is read from the thrown
+error's `extensions.http`. A domain error there would return `500` for an expired session.
+Since `context.ts` is part of the GraphQL layer, speaking GraphQL is legitimate.
 
 ## Error handling
 
@@ -356,7 +408,14 @@ message, with the full Postgres detail logged server-side and never sent to the 
 | `locationId` doesn't exist | `LOCATION_NOT_FOUND` |
 | `sensorId` doesn't exist | `SENSOR_NOT_FOUND` |
 | Updating or deleting a missing sensor | `SENSOR_NOT_FOUND` |
+| No token sent | `UNAUTHENTICATED` |
+| Token invalid or expired | `UNAUTHENTICATED`, HTTP 401 |
+| Wrong username or password | `UNAUTHENTICATED` |
 | Anything unrecognised | `INTERNAL_SERVER_ERROR` |
+
+The three authentication failures share one code on purpose, but carry different messages.
+A client can tell "log in" from "your password was wrong" — while nothing reveals *which*
+of username or password failed.
 
 ## Project structure
 
@@ -375,7 +434,13 @@ backend/
 │   │   ├── repository.ts           # Hand-written SQL, GraphQL-agnostic
 │   │   ├── types.ts                # Row shapes, shared without pulling in the pool
 │   │   └── errors.ts               # NotFoundError domain error
+│   ├── auth/
+│   │   ├── password.ts             # bcrypt hash / compare — pure
+│   │   ├── token.ts                # JWT sign / verify — pure
+│   │   └── errors.ts               # Auth domain errors
 │   ├── graphql/
+│   │   ├── context.ts              # Per-request auth context
+│   │   ├── guards.ts               # requireUser
 │   │   ├── errors.ts               # Constraint name to error code mapping
 │   │   └── errorHandling.ts        # Apollo formatError hook
 │   ├── generated/
@@ -394,9 +459,10 @@ docker-compose.yml                  # db + migrate + seed + backend
 .github/workflows/ci.yml            # Type check, tests, migrations, image build
 ```
 
-Three layers, each independent of the one above it: `db/` knows nothing about GraphQL,
-and `analytics/` knows nothing about either — it takes plain data and returns plain data,
-which is what keeps it testable without fixtures.
+Each layer is independent of the one above it: `db/` knows nothing about GraphQL, and
+`analytics/` and `auth/` know nothing about either — they take plain data and return plain
+data, which is what keeps them testable without fixtures. Only `graphql/` is allowed to
+import from all of them.
 
 `scripts/init.sql` is no longer the source of truth and is not maintained. The schema it
 describes predates the migration that replaced it, and the two have already diverged —
@@ -413,7 +479,7 @@ file.
 - [x] Versioned schema migrations with node-pg-migrate
 - [x] Docker + docker-compose, with automated migrations and seeding
 - [x] GitHub Actions CI — type check, tests, migrations against a real Postgres
-- [ ] Authentication (`sensors.created_by` is currently hardcoded)
+- [x] JWT authentication — every field except `login` requires a token
 - [ ] Angular 20 frontend with apollo-angular
 - [ ] Continuous deployment
 - [ ] Python agent for anomaly detection

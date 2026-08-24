@@ -12,3 +12,15 @@ export interface Reading {
   value: number;
   recordedAt: Date;
 }
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  passwordHash: string;
+  roleId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type UserCredentials = Pick<User, 'id' | 'passwordHash'>;

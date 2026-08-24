@@ -10,8 +10,9 @@ INSERT INTO roles (name, description)
 SELECT 'sensor_operator', 'Sensor operator role with limited access'
 WHERE NOT EXISTS (SELECT 1 FROM roles WHERE name = 'sensor_operator');
 
+-- Password hash for 'admin123' using bcrypt with 10 salt rounds
 INSERT INTO users (username, email, password_hash, role_id)
-SELECT 'admin', 'admin@example.com', 'hashed_password', (SELECT id FROM roles WHERE name = 'Admin')
+SELECT 'admin', 'admin@example.com', '$2b$10$LI8jxCALz3oSMT3C16xamOqnPhxRn.JsD1iq8Po4A9SbTfdLTTVj.', (SELECT id FROM roles WHERE name = 'Admin')
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 
 UPDATE roles SET created_by = (SELECT id FROM users WHERE username = 'admin'), updated_by = (SELECT id FROM users WHERE username = 'admin') WHERE name = 'Admin' AND NOT EXISTS (SELECT 1 FROM roles WHERE name = 'Admin' AND created_by IS NOT NULL AND updated_by IS NOT NULL);

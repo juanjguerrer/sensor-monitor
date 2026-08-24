@@ -1,17 +1,16 @@
 import { NotFoundError } from "./errors";
 import pool  from "./pool";
-import { Reading, Sensor } from "./types";
+import { Reading, Sensor, User, UserCredentials } from "./types";
 
 export async function listSensors() {
   const result = await pool.query<Sensor>('SELECT id, name, location_id AS "locationId", unit, type FROM sensors');
   return result.rows;
 }
 
-export async function createSensor(sensor: Omit<Sensor, 'id'>){
-  // TODO: replace with authenticated user id
+export async function createSensor(sensor: Omit<Sensor, 'id'>, userId: number) {
   const result = await pool.query<Sensor>(
-    'INSERT INTO sensors (name, location_id, unit, type, created_by) VALUES ($1, $2, $3, $4, 1) RETURNING id, name, location_id AS "locationId", unit, type',
-    [sensor.name, sensor.locationId, sensor.unit, sensor.type]
+    'INSERT INTO sensors (name, location_id, unit, type, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, location_id AS "locationId", unit, type',
+    [sensor.name, sensor.locationId, sensor.unit, sensor.type, userId]
   );
   const row = result.rows[0];
   if (!row) throw new Error('INSERT returned no row');
@@ -27,10 +26,10 @@ export async function getSensorById(id: number) {
   return row;
 }
 
-export async function updateSensor(sensor: Sensor) {
+export async function updateSensor(sensor: Sensor, userId: number) {
   const result = await pool.query<Sensor>(
-    'UPDATE sensors SET name = $1, location_id = $2, unit = $3, type = $4 WHERE id = $5 RETURNING id, name, location_id AS "locationId", unit, type',
-    [sensor.name, sensor.locationId, sensor.unit, sensor.type, sensor.id]
+    'UPDATE sensors SET name = $1, location_id = $2, unit = $3, type = $4, created_by = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, location_id AS "locationId", unit, type, created_by AS "createdBy"',
+    [sensor.name, sensor.locationId, sensor.unit, sensor.type, userId, sensor.id]
   );
   const row = result.rows[0];
   if (!row) throw new NotFoundError('Sensor', sensor.id);
@@ -67,4 +66,13 @@ export async function listReadings(sensorId: number, limit: number) {
     [sensorId, limit]
   );
   return result.rows;
+}
+
+export async function findUserByUsername(username: string) {
+  const result = await pool.query<UserCredentials>(
+    'SELECT id, username, password_hash AS "passwordHash" FROM users WHERE username = $1',
+    [username]
+  );
+  const row = result.rows[0] ?? null;
+  return row;
 }
