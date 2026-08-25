@@ -2,7 +2,6 @@ export const typeDefs = `#graphql
   type Sensor {
     id: Int!
     name: String!
-    locationId: Int!
     unit: String!
     type: String!
     location: Location!

@@ -117,7 +117,6 @@ export type Sensor = {
   __typename?: 'Sensor';
   id: Scalars['Int']['output'];
   location: Location;
-  locationId: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   type: Scalars['String']['output'];
   unit: Scalars['String']['output'];
@@ -269,7 +268,6 @@ export type ReadingResolvers<ContextType = Context, ParentType extends Resolvers
 export type SensorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Sensor'] = ResolversParentTypes['Sensor']> = {
   id?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   location?: Resolver<ResolversTypes['Location'], ParentType, ContextType>;
-  locationId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   unit?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
