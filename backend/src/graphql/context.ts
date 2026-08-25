@@ -2,20 +2,22 @@ import { StandaloneServerContextFunctionArgument } from "@apollo/server/standalo
 import { verify } from "../auth/token";
 import { GraphQLError } from "graphql";
 import { InvalidTokenError } from "../auth/errors";
+import { createLoaders } from "./loaders";
 
 export interface Context {
   userId: number | null;
+  loaders: ReturnType<typeof createLoaders>;
 }
 
 export async function createContext({ req }: StandaloneServerContextFunctionArgument): Promise<Context> {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!token || token.trim() === '') {
-    return { userId: null };
+    return { userId: null, loaders: createLoaders() };
   }
   try {
     const { userId } = verify(token);
-    return { userId };
+    return { userId, loaders: createLoaders() };
   } catch (error) {
     if (error instanceof InvalidTokenError) {
       throw new GraphQLError('Invalid token', {

@@ -85,3 +85,12 @@ export async function getLocationById(id: number) {
   const row = result.rows[0] ?? null;
   return row;
 }
+
+export async function listLocationsByIds(ids: readonly number[]) {
+  if (ids.length === 0) return [];
+  const result = await pool.query<Location>(
+    `SELECT id, name, plant_id AS "plantId", description FROM locations WHERE id = ANY($1)`,
+    [ids]
+  );
+  return result.rows;
+}

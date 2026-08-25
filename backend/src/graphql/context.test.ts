@@ -24,26 +24,43 @@ function argsWith(authorization?: string): StandaloneServerContextFunctionArgume
 
 describe('createContext — anonymous requests', () => {
   it('returns a null userId when there is no Authorization header', async () => {
-    await expect(createContext(argsWith())).resolves.toEqual({ userId: null });
+    await expect(createContext(argsWith())).resolves.toMatchObject({ userId: null });
   });
 
   it('returns a null userId when the header has no Bearer prefix', async () => {
     const raw = sign(1);
-    await expect(createContext(argsWith(raw))).resolves.toEqual({ userId: null });
+    await expect(createContext(argsWith(raw))).resolves.toMatchObject({ userId: null });
   });
 
   it('returns a null userId for a Bearer prefix with nothing after it', async () => {
-    await expect(createContext(argsWith('Bearer '))).resolves.toEqual({ userId: null });
+    await expect(createContext(argsWith('Bearer '))).resolves.toMatchObject({ userId: null });
   });
 
   it('returns a null userId when the token is only whitespace', async () => {
-    await expect(createContext(argsWith('Bearer    '))).resolves.toEqual({ userId: null });
+    await expect(createContext(argsWith('Bearer    '))).resolves.toMatchObject({ userId: null });
   });
 });
 
 describe('createContext — valid token', () => {
   it('extracts the userId', async () => {
-    await expect(createContext(argsWith(`Bearer ${sign(42)}`))).resolves.toEqual({ userId: 42 });
+    await expect(createContext(argsWith(`Bearer ${sign(42)}`))).resolves.toMatchObject({ userId: 42 });
+  });
+});
+
+describe('createContext — loaders', () => {
+  it('attaches loaders even to an anonymous context', async () => {
+    const context = await createContext(argsWith());
+    expect(context.loaders.location).toBeDefined();
+  });
+
+  it('builds a fresh set for every request', async () => {
+    // The cache must not outlive one request. A loader created at module scope
+    // would serve one user's rows to the next and never notice an update.
+    const first = await createContext(argsWith());
+    const second = await createContext(argsWith());
+
+    expect(first.loaders).not.toBe(second.loaders);
+    expect(first.loaders.location).not.toBe(second.loaders.location);
   });
 });
 

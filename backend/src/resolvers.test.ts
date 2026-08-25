@@ -4,6 +4,7 @@ import { UnauthenticatedError, InvalidCredentialsError } from './auth/errors';
 import { hashPassword } from './auth/password';
 import { verify } from './auth/token';
 import * as repository from './db/repository';
+import { createLoaders } from './graphql/loaders';
 import type { Context } from './graphql/context';
 
 // The repository is the boundary these tests stop at: no pool, no Postgres.
@@ -12,8 +13,10 @@ jest.mock('./db/repository');
 
 const repo = jest.mocked(repository);
 
-const signedIn: Context = { userId: 42 };
-const anonymous: Context = { userId: null };
+// Loaders are per-request, so each fixture builds its own. The repository is
+// mocked above, so a batch call never reaches Postgres.
+const signedIn: Context = { userId: 42, loaders: createLoaders() };
+const anonymous: Context = { userId: null, loaders: createLoaders() };
 
 /**
  * Resolvers are declared with three parameters, so parent and info are never

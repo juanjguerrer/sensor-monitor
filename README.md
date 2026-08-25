@@ -16,6 +16,7 @@ rather than delegating it.
 | Anomaly detection | Working |
 | Database migrations | Working |
 | Authentication | Working |
+| Relations + DataLoader batching | Working |
 | Docker + docker-compose | Working |
 | GitHub Actions CI | Working |
 | Angular frontend | Not started |
@@ -31,6 +32,7 @@ rather than delegating it.
 - **node-pg-migrate** — versioned schema migrations, no ORM required
 - **jsonwebtoken** + **bcrypt** — JWT authentication, hashed passwords
 - **GraphQL Code Generator** — resolver types derived from the schema
+- **DataLoader** — per-request batching for relation fields, no ORM required
 - **Jest** + **ts-jest** — unit tests over the analysis layer
 - **Docker** + **docker-compose** — the API, the database and the migration step as
   three containers
@@ -251,7 +253,7 @@ accepted at table-creation time but fails later, at the moment a referenced row 
 npm test
 ```
 
-90 tests across 8 files, in about two seconds. **Nothing in the suite touches PostgreSQL
+100 tests across 9 files, in about two seconds. **Nothing in the suite touches PostgreSQL
 and nothing opens a socket** — the repository is mocked at the boundary, which is possible
 only because `db/` takes plain values rather than request-scoped objects.
 
@@ -262,6 +264,7 @@ only because `db/` takes plain values rather than request-scoped objects.
 | `auth/token.test.ts` | Signing and verification, plus every rejection path: expired, wrong secret, malformed, and correctly signed tokens with a missing or non-numeric `userId` |
 | `graphql/context.test.ts` | Header parsing, anonymous requests, and that a rejected token produces `UNAUTHENTICATED` with HTTP 401 |
 | `graphql/guards.test.ts` | `requireUser` returns the id or throws |
+| `graphql/loaders.test.ts` | Batching, deduplication, key ordering, and per-key rejection for missing ids |
 | `graphql/errorHandling.test.ts` | Constraint-to-code mapping, which errors get logged, and that Postgres detail never reaches the client |
 | `resolvers.test.ts` | Resolver logic against a mocked repository, including login |
 | `schema.auth.test.ts` | Every field in the schema, driven through Apollo in-process |
@@ -310,7 +313,7 @@ npx tsc --noEmit
 | `psql -f seed_base.sql` | The seed runs |
 | the same command again | The seed is idempotent |
 | `npx tsc --noEmit` | The project compiles |
-| `npm test` | 90 tests pass, including that every schema field refuses anonymous callers |
+| `npm test` | 100 tests pass, including that every schema field refuses anonymous callers |
 | `docker build` | The Dockerfile still works |
 
 The migration step is the one that earns its place. Migrations are hand-written and only
@@ -350,7 +353,35 @@ Windows with `ERR_UNSUPPORTED_ESM_URL_SCHEME`, an upstream bug in
 `@graphql-tools/code-file-loader` where a raw `C:/...` path is passed to a dynamic
 `import()` instead of a `file://` URL.
 
-Run codegen after any schema change, and before writing resolvers for new fields.
+Run codegen after any schema change, and before writing resolvers for new fields. Changing
+the `Context` interface does **not** require it — `contextType` makes codegen emit an
+import, so the generated types follow that interface at compile time.
+
+`codegen.yml` also declares `mappers`, which is what makes field resolvers possible:
+
+```yaml
+mappers:
+  Sensor: ../db/types#Sensor as SensorRow
+  Location: ../db/types#Location as LocationRow
+```
+
+Without this, codegen assumes the object flowing between resolvers *is* the schema type —
+so `Query.sensors` would have to return a `location` on every sensor, defeating the point
+of resolving it lazily. `mappers` says the parent is the database row, and a field resolver
+produces the rest.
+
+The `as SensorRow` aliases are mandatory, not cosmetic. The generated file already declares
+its own `Sensor` and `Location` types from the schema, so importing the row types under the
+same names is a redeclaration:
+
+```
+error TS2440: Import declaration conflicts with local declaration of 'Sensor'.
+```
+
+That error creates a deadlock worth knowing about: `ts-node-dev` type-checks, so the dev
+server won't start while the generated file is broken — and codegen needs the server
+running to read the schema. Break it with `npx ts-node-dev --transpile-only src/index.ts`,
+regenerate, then go back to the normal script.
 
 ## API
 
@@ -360,6 +391,7 @@ Run codegen after any schema change, and before writing resolvers for new fields
 |---|---|
 | `sensors` | All sensors |
 | `sensor(id)` | One sensor, or `null` if it doesn't exist |
+| `Sensor.location` | The sensor's location, batched through DataLoader |
 | `readings(sensorId, limit)` | Readings for a sensor, newest first (`limit` defaults to 10) |
 | `anomalies(sensorId, limit, threshold)` | Readings more than `threshold` standard deviations from the mean of the last `limit` readings (`limit` defaults to 50, `threshold` to 3) |
 
@@ -377,6 +409,55 @@ Timestamps cross the wire as ISO 8601 strings.
 
 **Every field except `login` requires authentication.** Send the token from `login` as
 `Authorization: Bearer <token>`; without it the request is rejected with `UNAUTHENTICATED`.
+
+## Relations and the N+1 problem
+
+`Sensor.location` is a field resolver: it runs only when a query actually selects
+`location`, so `{ sensors { name } }` never touches the `locations` table.
+
+Resolved naively — one `getLocationById` per sensor — that costs one query per row.
+Measured against 13 sensors:
+
+| Query | Statements |
+|---|---|
+| `{ sensors { name } }` | 1 |
+| `{ sensors { name location { name } } }` | **14** |
+
+One to list the sensors, then one per sensor. The shape is `1 + N`, so a thousand sensors
+means a thousand and one round trips for a single request. Twelve of those thirteen
+lookups fetched a row that had already been fetched moments earlier.
+
+**A join isn't the fix.** `Query.sensors` has no idea whether the client asked for
+`location`, so joining eagerly would make `{ sensors { name } }` pay for data nobody
+requested. The field resolver is right; what's missing is batching.
+
+[`graphql/loaders.ts`](backend/src/graphql/loaders.ts) supplies it. Every `.load(id)` in
+the same tick of the event loop is collected, deduplicated, and dispatched as one
+`WHERE id = ANY($1)`:
+
+```
+with location  sensors=13  queries=2
+   1. SELECT id, name, location_id AS "locationId", unit, type FROM sensors
+   2. SELECT id, name, plant_id AS "plantId", description FROM locations WHERE id = ANY($1)
+```
+
+Two queries, and it stays two — more sensors just lengthen the array. The batching works
+because `graphql-js` resolves sibling fields concurrently, so all thirteen `.load()` calls
+land in the same tick. Resolve them sequentially and you are back to thirteen batches of
+one.
+
+**Loaders are created per request**, inside `createContext`, never at module scope. The
+queue and the cache are the same object, so a module-level loader would keep its cache for
+the lifetime of the process: an edited location would keep serving its old name until
+restart, and every user would share one cache. A test asserts two contexts never share a
+loader instance.
+
+**The batch function has a contract that is easy to break.** DataLoader requires exactly
+one entry per key, in key order. Postgres returns matching rows in arbitrary order and
+simply omits ids it did not find, so the rows are re-mapped through a `Map` before being
+returned. Skipping that gives you either a length-mismatch crash or — worse, and silently
+— one sensor served another's location. Missing ids get a `NotFoundError` **value** in
+their slot, which makes only that key's promise reject while its neighbours resolve.
 
 ## Authentication
 
@@ -480,6 +561,8 @@ backend/
 │   │   ├── context.test.ts
 │   │   ├── guards.ts               # requireUser
 │   │   ├── guards.test.ts
+│   │   ├── loaders.ts                # Per-request DataLoader batching
+│   │   ├── loaders.test.ts
 │   │   ├── errors.ts               # Constraint name to error code mapping
 │   │   ├── errorHandling.ts        # Apollo formatError hook
 │   │   └── errorHandling.test.ts
@@ -518,11 +601,12 @@ file.
 - [x] `detectAnomalies` — a pure function over readings, no database, no GraphQL
 - [x] Anomaly queries in the schema
 - [x] `src/scripts/simulate.ts` — generate realistic reading history
-- [x] Jest test suite — 90 tests, no database and no socket
+- [x] Jest test suite — 100 tests, no database and no socket
 - [x] Versioned schema migrations with node-pg-migrate
 - [x] Docker + docker-compose, with automated migrations and seeding
 - [x] GitHub Actions CI — type check, tests, migrations against a real Postgres
 - [x] JWT authentication — every field except `login` requires a token
+- [x] `Sensor.location` field resolver, N+1 solved with per-request DataLoader
 - [ ] Angular 20 frontend with apollo-angular
 - [ ] Continuous deployment
 - [ ] Python agent for anomaly detection

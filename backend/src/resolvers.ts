@@ -89,12 +89,8 @@ export const resolvers = {
     }
   },
   Sensor:  {
-    location: async (sensor) => {
-      const location = await getLocationById(sensor.locationId);
-      if (!location) {
-        throw new NotFoundError('Location', sensor.locationId);
-      }
-      return location;
+    location: async (sensor, _args, context) => {
+      return await context.loaders.location.load(sensor.locationId);
     }
   },
 } satisfies Resolvers;
