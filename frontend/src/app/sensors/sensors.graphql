@@ -1,0 +1,10 @@
+query GetSensors {
+  sensors {
+    id
+    name
+    location {
+      id
+      name
+    }
+  }
+}

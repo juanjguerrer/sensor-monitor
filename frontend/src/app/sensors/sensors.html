@@ -1,0 +1,5 @@
+@for (sensor of sensors(); track sensor.id) {
+  <div class="sensor">
+    <h2>{{ sensor | json }}</h2>
+  </div>
+}
