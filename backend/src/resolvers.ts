@@ -4,7 +4,7 @@ import { addReading, createSensor, deleteSensor, findUserByUsername, getLocation
 import type { Resolvers } from './generated/types';
 import { sign } from './auth/token';
 import { comparePassword } from './auth/password';
-import { InvalidCredentialsError, UnauthenticatedError } from './auth/errors';
+import { InvalidCredentialsError } from './auth/errors';
 import { requireUser } from './graphql/guards';
 import { NotFoundError } from './db/errors';
 
