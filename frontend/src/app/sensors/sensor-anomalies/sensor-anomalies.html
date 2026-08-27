@@ -1,0 +1,63 @@
+<section class="anomalies">
+  <header class="anomalies__header">
+    <h2 class="anomalies__title">Anomalies</h2>
+    @if (!loading() && !error() && !notEnoughReadings() && anomalies().length > 0) {
+      <span class="anomalies__count">{{ anomalies().length }}</span>
+    }
+  </header>
+
+  @if (loading()) {
+    <ul class="anomalies__list" aria-hidden="true">
+      @for (placeholder of [1, 2, 3]; track placeholder) {
+        <li class="anomaly anomaly--skeleton">
+          <span class="anomalies__bar anomalies__bar--value"></span>
+          <span class="anomalies__bar anomalies__bar--time"></span>
+        </li>
+      }
+    </ul>
+    <p class="anomalies__sr-only" role="status">Loading anomalies…</p>
+  } @else if (notEnoughReadings()) {
+    <div class="anomalies__state">
+      <p class="anomalies__state-title">Not enough readings yet</p>
+      <p class="anomalies__state-body">
+        Anomaly detection needs more history before a reading can stand out from the rest.
+        This section will fill in as readings accumulate.
+      </p>
+    </div>
+  } @else if (error()) {
+    <div class="anomalies__state anomalies__state--error" role="alert">
+      <p class="anomalies__state-title">Couldn't check for anomalies</p>
+      <p class="anomalies__state-body">
+        The server didn't answer as expected. The readings above are unaffected.
+      </p>
+    </div>
+  } @else if (anomalies().length === 0) {
+    <div class="anomalies__state anomalies__state--clear">
+      <p class="anomalies__state-title">Nothing unusual</p>
+      <p class="anomalies__state-body">Every recent reading sits within the expected range.</p>
+    </div>
+  } @else {
+    <ul class="anomalies__list">
+      @for (anomaly of anomalies(); track anomaly.readingId) {
+        <li class="anomaly">
+          <span class="anomaly__value">
+            {{ anomaly.value | number: '1.1-2' }}
+            <span class="anomaly__unit">{{ unit() }}</span>
+          </span>
+
+          <span
+            class="anomaly__z"
+            [class.anomaly__z--high]="anomaly.zScore > 0"
+            [class.anomaly__z--low]="anomaly.zScore < 0"
+          >
+            {{ anomaly.zScore | number: '1.1-1' }}&sigma;
+          </span>
+
+          <time class="anomaly__time" [attr.datetime]="anomaly.timestamp">
+            {{ anomaly.timestamp | date: 'short' }}
+          </time>
+        </li>
+      }
+    </ul>
+  }
+</section>

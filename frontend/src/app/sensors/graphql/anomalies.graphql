@@ -1,0 +1,8 @@
+query GetAnomalies($sensorId: Int!, $limit: Int, $threshold: Float) {
+  anomalies(sensorId: $sensorId, limit: $limit, threshold: $threshold) {
+    readingId
+    timestamp
+    value
+    zScore
+  }
+}

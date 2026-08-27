@@ -4,11 +4,13 @@ import { DatePipe } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 import { RouterLink } from '@angular/router';
+import { SensorAnomalies } from '../sensor-anomalies/sensor-anomalies';
 
 @Component({
   imports: [
     DatePipe,
-    RouterLink
+    RouterLink,
+    SensorAnomalies
   ],
   selector: 'app-sensor-detail',
   styleUrl: './sensor-detail.scss',
