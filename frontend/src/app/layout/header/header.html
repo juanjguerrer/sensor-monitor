@@ -1,0 +1,21 @@
+<header class="header">
+  <div class="header__inner">
+    <a class="header__brand" routerLink="/sensors">
+      <span class="header__mark" aria-hidden="true"></span>
+      <span class="header__name">Sensor Monitor</span>
+    </a>
+
+    <button
+      class="header__logout"
+      type="button"
+      [disabled]="loggingOut()"
+      [attr.aria-busy]="loggingOut()"
+      (click)="logout()"
+    >
+      <span class="header__logout-label">Log out</span>
+      @if (loggingOut()) {
+        <span class="header__spinner" aria-hidden="true"></span>
+      }
+    </button>
+  </div>
+</header>

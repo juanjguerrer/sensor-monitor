@@ -5,20 +5,26 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./login/login').then((m) => m.Login),
-    canActivate: [ guestGuard ],
-  },
-  {
-    path: 'sensors',
-    loadComponent: () => import('./sensors/sensors-list').then((m) => m.SensorsList),
-    canActivate: [ authGuard ],
+    canActivate: [guestGuard],
   },
   {
     path: '',
-    pathMatch: 'full',
-    redirectTo: 'sensors',
+    loadComponent: () => import('./layout/shell/shell').then((m) => m.Shell),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'sensors',
+        loadComponent: () => import('./sensors/sensors-list').then((m) => m.SensorsList),
+      },
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'sensors',
+      },
+    ],
   },
   {
     path: '**',
-    redirectTo: 'sensors',
-  }
+    redirectTo: '',
+  },
 ];

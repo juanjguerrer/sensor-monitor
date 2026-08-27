@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {form, FormField, required, submit} from '@angular/forms/signals';
 import { AuthApi } from '../core/auth/auth-api';
 import { Session } from '../core/auth/session';
@@ -18,6 +18,7 @@ interface LoginData {
   selector: 'app-login',
   styleUrl: './login.scss',
   templateUrl: './login.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Login {
   authApi = inject(AuthApi);
