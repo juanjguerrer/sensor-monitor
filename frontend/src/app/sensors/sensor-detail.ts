@@ -25,8 +25,8 @@ export class SensorDetail {
     )
   )
 
-  protected readonly loading = computed(() => this.result()?.loading ?? true);
   protected readonly error = computed(() => this.result()?.error);
+  protected readonly loading = computed(() => !this.error() && this.result()?.dataState !== 'complete',);
   protected readonly notFound = computed(
     () => !this.loading() && !this.error() && this.sensor() === null,
   );

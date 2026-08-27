@@ -3,6 +3,7 @@ import { Apollo } from 'apollo-angular';
 import { map } from 'rxjs';
 import { GetSensorDetailDocument, GetSensorsDocument, GetSensorsQuery } from '../generated/graphql';
 export type SensorListItem = GetSensorsQuery['sensors'][number];
+const LIVE_INTERVAL = 5000;
 @Service()
 export class SensorsApi {
   private readonly apollo = inject(Apollo);
@@ -19,6 +20,7 @@ export class SensorsApi {
       query: GetSensorDetailDocument,
       variables: { id, limit },
       errorPolicy: 'all',
+      pollInterval: LIVE_INTERVAL,
     });
   }
 }

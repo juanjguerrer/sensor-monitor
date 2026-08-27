@@ -11,6 +11,7 @@
     "codegen": "graphql-codegen",
     "dev": "ts-node-dev src/index.ts",
     "simulate": "ts-node src/scripts/simulate.ts",
+    "simulate:live": "ts-node src/scripts/simulate.ts --live",
     "migrate": "node-pg-migrate -m src/migrations --envPath .env",
     "migrate:up": "node-pg-migrate up -m src/migrations --envPath .env",
     "migrate:down": "node-pg-migrate down -m src/migrations --envPath .env",
