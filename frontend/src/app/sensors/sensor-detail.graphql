@@ -1,0 +1,17 @@
+query GetSensorDetail($id: Int!, $limit: Int) {
+  sensor(id: $id) {
+    id
+    name
+    unit
+    type
+    location {
+      id
+      name
+    }
+  }
+  readings(sensorId: $id, limit: $limit) {
+    id
+    value
+    recordedAt
+  }
+}

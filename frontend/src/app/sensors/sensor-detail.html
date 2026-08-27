@@ -1,0 +1,79 @@
+<section class="detail">
+  <a class="detail__back" routerLink="/sensors">
+    <span aria-hidden="true">&larr;</span>
+    All sensors
+  </a>
+
+  @if (loading()) {
+    <div class="detail__header detail__header--skeleton">
+      <span class="detail__bar detail__bar--title"></span>
+      <span class="detail__bar detail__bar--meta"></span>
+    </div>
+    <ul class="readings" aria-hidden="true">
+      @for (placeholder of [1, 2, 3, 4, 5]; track placeholder) {
+        <li class="reading reading--skeleton">
+          <span class="detail__bar detail__bar--value"></span>
+          <span class="detail__bar detail__bar--time"></span>
+        </li>
+      }
+    </ul>
+    <p class="detail__sr-only" role="status">Loading sensor…</p>
+  } @else if (error()) {
+    <div class="detail__state detail__state--error" role="alert">
+      <p class="detail__state-title">Couldn't load this sensor</p>
+      <p class="detail__state-body">
+        The server didn't answer as expected. Check that the backend is running, then try again.
+      </p>
+    </div>
+  } @else if (notFound()) {
+    <div class="detail__state">
+      <p class="detail__state-title">Sensor not found</p>
+      <p class="detail__state-body">
+        There is no sensor with id {{ id() }}. It may have been removed.
+      </p>
+    </div>
+  } @else {
+    @if (sensor(); as sensor) {
+      <header class="detail__header">
+        <h1 class="detail__name">{{ sensor.name }}</h1>
+        <dl class="detail__meta">
+          <div class="detail__meta-item">
+            <dt class="detail__meta-label">Location</dt>
+            <dd class="detail__meta-value">{{ sensor.location.name }}</dd>
+          </div>
+          <div class="detail__meta-item">
+            <dt class="detail__meta-label">Type</dt>
+            <dd class="detail__meta-value">{{ sensor.type }}</dd>
+          </div>
+          <div class="detail__meta-item">
+            <dt class="detail__meta-label">Unit</dt>
+            <dd class="detail__meta-value">{{ sensor.unit }}</dd>
+          </div>
+        </dl>
+      </header>
+
+      <h2 class="detail__section-title">Recent readings</h2>
+
+      @if (readings().length === 0) {
+        <div class="detail__state">
+          <p class="detail__state-title">No readings yet</p>
+          <p class="detail__state-body">Readings recorded for this sensor will appear here.</p>
+        </div>
+      } @else {
+        <ul class="readings">
+          @for (reading of readings(); track reading.id) {
+            <li class="reading">
+              <span class="reading__value">
+                {{ reading.value }}
+                <span class="reading__unit">{{ sensor.unit }}</span>
+              </span>
+              <time class="reading__time" [attr.datetime]="reading.recordedAt">
+                {{ reading.recordedAt | date: 'short' }}
+              </time>
+            </li>
+          }
+        </ul>
+      }
+    }
+  }
+</section>

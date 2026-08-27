@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth/auth-guard';
+import { numericIdGuard } from './sensors/numeric-id-guard';
 
 export const routes: Routes = [
   {
@@ -15,6 +16,11 @@ export const routes: Routes = [
       {
         path: 'sensors',
         loadComponent: () => import('./sensors/sensors-list').then((m) => m.SensorsList),
+      },
+      {
+        path: 'sensors/:id',
+        loadComponent: () => import('./sensors/sensor-detail').then((m) => m.SensorDetail),
+        canActivate: [numericIdGuard]
       },
       {
         path: '',

@@ -32,9 +32,11 @@
   } @else {
     <ul class="sensors__list">
       @for (sensor of sensors(); track sensor.id) {
-        <li class="sensor">
-          <h2 class="sensor__name">{{ sensor.name }}</h2>
-          <p class="sensor__location">{{ sensor.location.name }}</p>
+        <li>
+          <a class="sensor" [routerLink]="['/sensors', sensor.id]">
+            <h2 class="sensor__name">{{ sensor.name }}</h2>
+            <p class="sensor__location">{{ sensor.location.name }}</p>
+          </a>
         </li>
       }
     </ul>
