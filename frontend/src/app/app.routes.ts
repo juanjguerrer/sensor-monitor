@@ -15,11 +15,11 @@ export const routes: Routes = [
     children: [
       {
         path: 'sensors',
-        loadComponent: () => import('./sensors/sensors-list').then((m) => m.SensorsList),
+        loadComponent: () => import('./sensors/sensors-list/sensors-list').then((m) => m.SensorsList),
       },
       {
         path: 'sensors/:id',
-        loadComponent: () => import('./sensors/sensor-detail').then((m) => m.SensorDetail),
+        loadComponent: () => import('./sensors/sensor-detail/sensor-detail').then((m) => m.SensorDetail),
         canActivate: [numericIdGuard]
       },
       {

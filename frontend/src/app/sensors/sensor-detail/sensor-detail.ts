@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, numberAttribute } from '@angular/core';
-import { SensorsApi } from './sensors-api';
+import { SensorsApi } from '../sensors-api';
 import { DatePipe } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
