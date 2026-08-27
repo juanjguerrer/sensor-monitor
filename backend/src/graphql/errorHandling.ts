@@ -56,7 +56,7 @@ export function formatError(
       message: 'Invalid username or password',
       extensions: {
         ...formattedError.extensions,
-        code: 'UNAUTHENTICATED',
+        code: 'INVALID_CREDENTIALS',
       },
     };
   }

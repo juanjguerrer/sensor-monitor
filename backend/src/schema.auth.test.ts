@@ -91,9 +91,9 @@ describe('login is the one exception', () => {
 
     const result = await run('mutation { login(username: "nobody", password: "whatever") { token } }');
 
-    // Same code as an unauthenticated request, but a different message — which
-    // is how a client tells "log in" from "your password was wrong".
-    expect(result.errors?.[0]?.extensions?.code).toBe('UNAUTHENTICATED');
+    // Its own code, distinct from an unauthenticated request — which is how a
+    // client tells "your password was wrong" from "your session expired".
+    expect(result.errors?.[0]?.extensions?.code).toBe('INVALID_CREDENTIALS');
     expect(result.errors?.[0]?.message).toBe('Invalid username or password');
   });
 });

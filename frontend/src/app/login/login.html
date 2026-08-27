@@ -1,0 +1,56 @@
+<main class="login">
+  <form class="login__card" (submit)="onSubmit($event)" novalidate>
+    <header class="login__header">
+      <h1 class="login__title">Sensor Monitor</h1>
+      <p class="login__subtitle">Sign in to continue</p>
+    </header>
+
+    @if (errorMessage(); as message) {
+      <p class="login__banner" role="alert">{{ message }}</p>
+    }
+
+    <div class="field">
+      <label class="field__label" for="username">Username</label>
+      <input
+        id="username"
+        class="field__input"
+        type="text"
+        autocomplete="username"
+        aria-describedby="username-errors"
+        [attr.aria-invalid]="loginForm.username().touched() && loginForm.username().invalid()"
+        [formField]="loginForm.username"
+      />
+      @if (loginForm.username().touched()) {
+        <p class="field__errors" id="username-errors">
+          @for (error of loginForm.username().errors(); track $index) {
+            <span>{{ error.message }}</span>
+          }
+        </p>
+      }
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="password">Password</label>
+      <input
+        id="password"
+        class="field__input"
+        type="password"
+        autocomplete="current-password"
+        aria-describedby="password-errors"
+        [attr.aria-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
+        [formField]="loginForm.password"
+      />
+      @if (loginForm.password().touched()) {
+        <p class="field__errors" id="password-errors">
+          @for (error of loginForm.password().errors(); track $index) {
+            <span>{{ error.message }}</span>
+          }
+        </p>
+      }
+    </div>
+
+    <button class="login__submit" type="submit" [disabled]="loginForm().submitting()">
+      {{ loginForm().submitting() ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </form>
+</main>

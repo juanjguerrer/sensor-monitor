@@ -66,15 +66,16 @@ describe('authentication failures', () => {
   it('reports bad credentials without revealing which half was wrong', () => {
     const result = formatError(incoming('anything'), new InvalidCredentialsError());
 
-    expect(result.extensions?.code).toBe('UNAUTHENTICATED');
+    expect(result.extensions?.code).toBe('INVALID_CREDENTIALS');
     expect(result.message).toBe('Invalid username or password');
   });
 
-  it('distinguishes a missing token from bad credentials by message only', () => {
+  it('gives a missing token and bad credentials distinct codes', () => {
     const missing = formatError(incoming('anything'), new UnauthenticatedError());
     const bad = formatError(incoming('anything'), new InvalidCredentialsError());
 
-    expect(missing.extensions?.code).toBe(bad.extensions?.code);
+    expect(missing.extensions?.code).toBe('UNAUTHENTICATED');
+    expect(bad.extensions?.code).toBe('INVALID_CREDENTIALS');
     expect(missing.message).not.toBe(bad.message);
   });
 

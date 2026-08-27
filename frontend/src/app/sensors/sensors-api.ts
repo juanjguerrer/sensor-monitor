@@ -4,7 +4,7 @@ import { map } from 'rxjs';
 import { GetSensorsDocument, GetSensorsQuery } from '../generated/graphql';
 export type SensorListItem = GetSensorsQuery['sensors'][number];
 @Service()
-export class SensorsService {
+export class SensorsApi {
   private readonly apollo = inject(Apollo);
 
   getSensors() {
