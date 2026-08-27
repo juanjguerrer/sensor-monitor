@@ -1,5 +1,42 @@
-@for (sensor of sensors(); track sensor.id) {
-  <div class="sensor">
-    <h2>{{ sensor | json }}</h2>
-  </div>
-}
+<section class="sensors">
+  <header class="sensors__header">
+    <h1 class="sensors__title">Sensors</h1>
+    @if (!loading() && !error() && sensors().length > 0) {
+      <span class="sensors__count">{{ sensors().length }}</span>
+    }
+  </header>
+
+  @if (loading()) {
+    <ul class="sensors__list" aria-hidden="true">
+      @for (placeholder of [1, 2, 3]; track placeholder) {
+        <li class="sensor sensor--skeleton">
+          <span class="sensor__bar sensor__bar--name"></span>
+          <span class="sensor__bar sensor__bar--location"></span>
+        </li>
+      }
+    </ul>
+    <p class="sensors__sr-only" role="status">Loading sensors…</p>
+  } @else if (error()) {
+    <div class="sensors__state sensors__state--error" role="alert">
+      <p class="sensors__state-title">Couldn't load sensors</p>
+      <p class="sensors__state-body">
+        The server didn't answer as expected. Check that the backend is running, then try again.
+      </p>
+      <button class="sensors__retry" type="button" (click)="retry()">Try again</button>
+    </div>
+  } @else if (sensors().length === 0) {
+    <div class="sensors__state">
+      <p class="sensors__state-title">No sensors yet</p>
+      <p class="sensors__state-body">Sensors you register will appear here.</p>
+    </div>
+  } @else {
+    <ul class="sensors__list">
+      @for (sensor of sensors(); track sensor.id) {
+        <li class="sensor">
+          <h2 class="sensor__name">{{ sensor.name }}</h2>
+          <p class="sensor__location">{{ sensor.location.name }}</p>
+        </li>
+      }
+    </ul>
+  }
+</section>

@@ -7,9 +7,10 @@ export type SensorListItem = GetSensorsQuery['sensors'][number];
 export class SensorsApi {
   private readonly apollo = inject(Apollo);
 
-  getSensors() {
-    return this.apollo
-      .watchQuery({ query: GetSensorsDocument })
-      .valueChanges.pipe(map((result) => result.data?.sensors ?? []));
+  watchSensors() {
+    return this.apollo.watchQuery({
+      query: GetSensorsDocument,
+      errorPolicy: 'all',
+    });
   }
 }

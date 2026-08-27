@@ -2,6 +2,42 @@
 
 :root {
   color-scheme: light dark;
+
+  --app-bg: #eef1f5;
+  --app-surface: #ffffff;
+  --app-border: #dfe4ea;
+  --app-subtle: #f7f9fb;
+  --app-text: #10161d;
+  --app-muted: #5b6672;
+  --app-accent: #2563eb;
+  --app-accent-hover: #1d4fd7;
+  --app-accent-text: #ffffff;
+  --app-ring: rgb(37 99 235 / 22%);
+  --app-danger: #c02617;
+  --app-danger-bg: #fdeceb;
+  --app-danger-border: #f4c4bf;
+  --app-danger-ring: rgb(192 38 23 / 18%);
+  --app-shadow: 0 1px 2px rgb(16 22 29 / 6%), 0 12px 32px -12px rgb(16 22 29 / 18%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #0b0f14;
+    --app-surface: #141b23;
+    --app-border: #263140;
+    --app-subtle: #0f151c;
+    --app-text: #e8eef5;
+    --app-muted: #94a2b3;
+    --app-accent: #3b82f6;
+    --app-accent-hover: #5b9bff;
+    --app-accent-text: #06111f;
+    --app-ring: rgb(59 130 246 / 30%);
+    --app-danger: #ff8177;
+    --app-danger-bg: #2a1516;
+    --app-danger-border: #4d2523;
+    --app-danger-ring: rgb(255 129 119 / 24%);
+    --app-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 16px 40px -16px rgb(0 0 0 / 70%);
+  }
 }
 
 *,
