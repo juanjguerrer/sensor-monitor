@@ -14,6 +14,7 @@ describe('SensorDetail', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(SensorDetail);
+    fixture.componentRef.setInput('id', 1);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });
