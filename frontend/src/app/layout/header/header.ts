@@ -23,7 +23,9 @@ export class Header {
     this.loggingOut.set(true);
     try {
       this.session.logout();
-      await this.apollo.client.clearStore().catch(() => {});
+      await this.apollo.client.clearStore().catch(() => {
+        // a cache that fails to clear must not strand the user on a page they logged out of
+      });
       await this.router.navigateByUrl('/login');
     } finally {
       this.loggingOut.set(false);

@@ -7,7 +7,7 @@ import { ErrorLink } from '@apollo/client/link/error';
 export function createErrorLink() {
   const session = inject(Session);
   const router = inject(Router);
-  return new ErrorLink(({ error, operation }) => {
+  return new ErrorLink(({ error }) => {
     if (!CombinedGraphQLErrors.is(error)) return;
 
     const expired = error.errors.some((e) => e.extensions?.['code'] === 'UNAUTHENTICATED');
