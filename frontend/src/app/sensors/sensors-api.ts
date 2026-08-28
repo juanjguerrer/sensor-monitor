@@ -1,6 +1,6 @@
 import { inject, Service } from '@angular/core';
 import { Apollo } from 'apollo-angular';
-import { CreateSensorDocument, GetAnomaliesDocument, GetLocationsDocument, GetSensorDetailDocument, GetSensorForEditDocument, GetSensorsDocument, GetSensorsQuery, UpdateSensorDocument } from '../generated/graphql';
+import { CreateSensorDocument, DeleteSensorDocument, GetAnomaliesDocument, GetLocationsDocument, GetSensorDetailDocument, GetSensorForEditDocument, GetSensorsDocument, GetSensorsQuery, UpdateSensorDocument } from '../generated/graphql';
 export type SensorListItem = GetSensorsQuery['sensors'][number];
 const LIVE_INTERVAL = 5000;
 
@@ -67,6 +67,17 @@ export class SensorsApi {
     return this.apollo.mutate({
       mutation: UpdateSensorDocument,
       variables: input,
+    });
+  }
+
+  deleteSensor(id: number) {
+    return this.apollo.mutate({
+      mutation: DeleteSensorDocument,
+      variables: { id },
+      update: (cache) => {
+        cache.evict({ id: cache.identify({ __typename: 'Sensor', id }) });
+        cache.gc();
+      },
     });
   }
 }

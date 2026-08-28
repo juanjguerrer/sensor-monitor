@@ -1,0 +1,3 @@
+mutation DeleteSensor($id: Int!) {
+  deleteSensor(id: $id)
+}

@@ -37,8 +37,26 @@
       <header class="detail__header">
         <div class="detail__heading">
           <h1 class="detail__name">{{ sensor.name }}</h1>
-          <a class="detail__edit" [routerLink]="['/sensors', sensor.id, 'edit']">Edit</a>
+          <div class="detail__actions">
+            <a class="detail__edit" [routerLink]="['/sensors', sensor.id, 'edit']">Edit</a>
+            <button
+              class="detail__delete"
+              type="button"
+              [disabled]="deleting()"
+              [attr.aria-busy]="deleting()"
+              (click)="onDelete(sensor.id, sensor.name)"
+            >
+              <span class="detail__delete-label">Delete</span>
+              @if (deleting()) {
+                <span class="detail__spinner" aria-hidden="true"></span>
+              }
+            </button>
+          </div>
         </div>
+
+        @if (deleteError(); as message) {
+          <p class="detail__banner" role="alert">{{ message }}</p>
+        }
         <dl class="detail__meta">
           <div class="detail__meta-item">
             <dt class="detail__meta-label">Location</dt>
