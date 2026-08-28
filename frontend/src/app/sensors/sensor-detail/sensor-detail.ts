@@ -5,6 +5,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 import { Router, RouterLink } from '@angular/router';
 import { SensorAnomalies } from '../sensor-anomalies/sensor-anomalies';
+import { Toaster } from '../../core/toast/toaster';
 
 @Component({
   imports: [
@@ -20,6 +21,7 @@ import { SensorAnomalies } from '../sensor-anomalies/sensor-anomalies';
 export class SensorDetail {
   private readonly sensorApi = inject(SensorsApi);
   private readonly router = inject(Router);
+  private readonly toaster = inject(Toaster);
   readonly id = input.required({ transform: numberAttribute });
 
   private readonly result = toSignal(
@@ -53,6 +55,7 @@ export class SensorDetail {
       this.sensorApi.deleteSensor(id).subscribe({
         next: async () => {
           this.deleting.set(false);
+          this.toaster.success(`Sensor "${name}" deleted successfully.`);
           await this.router.navigate(['/sensors']);
         },
         error: () => {

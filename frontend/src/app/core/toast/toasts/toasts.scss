@@ -1,0 +1,83 @@
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(24rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0.75rem 0.875rem;
+  pointer-events: auto;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-left: 3px solid var(--app-muted);
+  border-radius: 0.625rem;
+  box-shadow: var(--app-shadow);
+  animation: toast-in 160ms ease-out;
+
+  &--success {
+    border-left-color: var(--app-accent);
+  }
+
+  &--error {
+    border-left-color: var(--app-danger);
+  }
+
+  &__text {
+    flex: 1;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: var(--app-text);
+  }
+
+  &__dismiss {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    font: inherit;
+    font-size: 1.125rem;
+    line-height: 1;
+    color: var(--app-muted);
+    background: transparent;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--app-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--app-accent);
+      outline-offset: 1px;
+    }
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

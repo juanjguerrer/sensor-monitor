@@ -4,6 +4,7 @@ import { form, FormField, required, submit } from '@angular/forms/signals';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom, of, switchMap } from 'rxjs';
 import { SensorsApi } from '../sensors-api';
+import { Toaster } from '../../core/toast/toaster';
 
 interface SensorFormData {
   name: string;
@@ -22,7 +23,7 @@ interface SensorFormData {
 export class SensorForm {
   private readonly sensorsApi = inject(SensorsApi);
   private readonly router = inject(Router);
-
+  private readonly toaster = inject(Toaster);
   constructor() {
     effect(() => {
       // fill the form model with the sensor data when it is loaded
@@ -106,6 +107,7 @@ export class SensorForm {
             type: data.type,
             unit: data.unit,
           }));
+          this.toaster.success('Sensor updated successfully');
         } else {
           await firstValueFrom(this.sensorsApi.createSensor({
             name: data.name,
@@ -114,10 +116,12 @@ export class SensorForm {
             unit: data.unit,
           }));
         }
+        this.toaster.success('Sensor saved successfully');
         await this.router.navigate(['/sensors']);
       } catch (error) {
         console.error(error);
         this.submitError.set('An error occurred while saving the sensor.');
+        this.toaster.error('An error occurred while saving the sensor.' + `${error}`);
       }
     });
   }

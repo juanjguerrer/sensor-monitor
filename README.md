@@ -181,6 +181,20 @@ exits — useful for giving anomaly detection enough history to work with.
 Everything except `/login` sits under a shell route carrying `authGuard`, so new routes
 nested there are protected by default rather than by remembering to add a guard.
 
+**Two ways a session ends, and they arrive differently.** A *missing* token means
+`createContext` returns `userId: null` and a resolver's `requireUser` throws — HTTP 200
+with an `errors` array. An *invalid or expired* token makes `createContext` throw with
+`http: { status: 401 }`, so there is no GraphQL envelope at all. Apollo surfaces the first
+as `CombinedGraphQLErrors` and the second as `ServerError`, so the error link has to check
+for both or expired sessions hang silently.
+
+`Session.isAuthenticated()` is a plain method rather than a `computed`, deliberately. It
+compares the token's `exp` against `Date.now()`, and `Date.now()` is not a signal — a
+computed would cache the answer until the token itself changed, happily reporting a
+session valid long after it expired. The guard clears the dead token before redirecting, so
+the interceptor stops attaching it; the error link's 401 branch remains the backstop for a
+token that dies between the guard passing and the response arriving.
+
 **Regenerating query types**
 
 ```bash
@@ -201,9 +215,25 @@ npm test
 npm run lint
 ```
 
-14 tests. They assert that each component constructs — thin, but the `ApolloTestingModule`
-harness is wired, so a real test is a matter of flushing a response and asserting on the
-derived signals.
+26 tests across 16 files. Most assert that a component constructs, but three specs —
+`sensors-list`, `sensor-detail` and `sensor-anomalies` — drive real behaviour:
+`ApolloTestingModule` replaces the HTTP link with a queue, the test flushes a response, and
+the assertions run against the rendered DOM rather than the component's internals.
+
+Those three exist because each screen has four or five states that an empty result cannot
+tell apart. The assertions that earn their place are the negative ones:
+
+- **Detail** — a `null` sensor must render "not found" and *no* `role="alert"`, since
+  `sensor()` is `null` for loading, for failure, and for genuinely missing.
+- **Anomalies** — a `BAD_USER_INPUT` error carrying `maxZScore` must render "not enough
+  readings" and *no* alert, while any other error must render the alert. `error()` is
+  truthy in both cases, so the template's branch order is the only thing separating them —
+  reorder those two branches and the test fails.
+
+`controller.verify()` in `afterEach` asserts nothing was left unflushed, which is what
+catches a component quietly issuing a query you didn't expect. The detail spec relies on
+that: `<app-sensor-anomalies>` only mounts once a sensor loads, so its query appears in the
+success test and in neither of the failure tests.
 
 ## Docker
 
@@ -686,8 +716,11 @@ frontend/
 │   │   │   │   ├── auth-guard.ts       # authGuard + guestGuard
 │   │   │   │   ├── decode-jwt.ts       # Reads `exp` — never verifies
 │   │   │   │   └── graphql/
-│   │   │   └── graphql/
-│   │   │       └── error-link.ts       # UNAUTHENTICATED → clear session, redirect
+│   │   │   ├── graphql/
+│   │   │   │   └── error-link.ts       # UNAUTHENTICATED → clear session, redirect
+│   │   │   └── toast/
+│   │   │       ├── toaster.ts          # Holds the messages; outlives navigation
+│   │   │       └── toasts/             # Renders them, mounted at the root
 │   │   ├── layout/
 │   │   │   ├── shell/                  # Header + router-outlet, carries authGuard
 │   │   │   └── header/                 # Brand + logout
@@ -743,10 +776,10 @@ file.
 - [x] Sensor list and detail, with five-second polling for live readings
 - [x] Anomalies on the detail page, with "not enough readings" as its own state
 - [x] Sensor create and edit with Signal Forms
-- [ ] Delete a sensor, with confirmation
-- [ ] A toast service — mutation feedback and redirect reasons
+- [x] Delete a sensor, with confirmation and cache eviction
+- [x] A toast service — mutation feedback and redirect reasons
+- [x] Frontend tests that flush responses and assert what renders
 - [ ] `me` query, so the header can show who is signed in
-- [ ] Real frontend tests — flush a response, assert the derived signals
 - [ ] Pause polling while the tab is hidden
 - [ ] Continuous deployment
 - [ ] Python agent for anomaly detection
