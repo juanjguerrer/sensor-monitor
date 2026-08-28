@@ -31,6 +31,26 @@
     border-radius: 999px;
   }
 
+  &__new {
+    margin-left: auto;
+    padding: 0.4375rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--app-accent-text);
+    text-decoration: none;
+    background: var(--app-accent);
+    border-radius: 0.5rem;
+
+    &:hover {
+      background: var(--app-accent-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--app-accent);
+      outline-offset: 2px;
+    }
+  }
+
   &__list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));

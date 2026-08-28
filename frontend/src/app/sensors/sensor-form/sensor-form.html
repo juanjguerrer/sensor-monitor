@@ -1,0 +1,129 @@
+<section class="sensor-form">
+  <a class="sensor-form__back" routerLink="/sensors">
+    <span aria-hidden="true">&larr;</span>
+    All sensors
+  </a>
+
+  <h1 class="sensor-form__title">{{ isEdit() ? 'Edit sensor' : 'New sensor' }}</h1>
+
+  @if (loading()) {
+    <div class="sensor-form__card sensor-form__card--skeleton">
+      @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+        <span class="sensor-form__bar"></span>
+      }
+    </div>
+    <p class="sensor-form__sr-only" role="status">Loading…</p>
+  } @else if (loadError()) {
+    <div class="sensor-form__state sensor-form__state--error" role="alert">
+      <p class="sensor-form__state-title">Couldn't load this sensor</p>
+      <p class="sensor-form__state-body">
+        The server didn't answer as expected. Go back and try again.
+      </p>
+    </div>
+  } @else {
+    <form class="sensor-form__card" (submit)="onSubmit($event)" novalidate>
+      @if (submitError(); as message) {
+        <p class="sensor-form__banner" role="alert">{{ message }}</p>
+      }
+
+      <div class="field">
+        <label class="field__label" for="name">Name</label>
+        <input
+          id="name"
+          class="field__input"
+          type="text"
+          autocomplete="off"
+          aria-describedby="name-errors"
+          [attr.aria-invalid]="sensorForm.name().touched() && sensorForm.name().invalid()"
+          [formField]="sensorForm.name"
+        />
+        @if (sensorForm.name().touched()) {
+          <p class="field__errors" id="name-errors">
+            @for (error of sensorForm.name().errors(); track $index) {
+              <span>{{ error.message }}</span>
+            }
+          </p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="locationId">Location</label>
+        <select
+          id="locationId"
+          class="field__input field__input--select"
+          aria-describedby="locationId-errors"
+          [attr.aria-invalid]="sensorForm.locationId().touched() && sensorForm.locationId().invalid()"
+          [formField]="sensorForm.locationId"
+        >
+          <option [value]="" disabled>Select a location…</option>
+          @for (location of locations(); track location.id) {
+            <option [value]="location.id">{{ location.name }}</option>
+          }
+        </select>
+        @if (sensorForm.locationId().touched()) {
+          <p class="field__errors" id="locationId-errors">
+            @for (error of sensorForm.locationId().errors(); track $index) {
+              <span>{{ error.message }}</span>
+            }
+          </p>
+        }
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="type">Type</label>
+          <input
+            id="type"
+            class="field__input"
+            type="text"
+            autocomplete="off"
+            placeholder="temperature"
+            aria-describedby="type-errors"
+            [attr.aria-invalid]="sensorForm.type().touched() && sensorForm.type().invalid()"
+            [formField]="sensorForm.type"
+          />
+          @if (sensorForm.type().touched()) {
+            <p class="field__errors" id="type-errors">
+              @for (error of sensorForm.type().errors(); track $index) {
+                <span>{{ error.message }}</span>
+              }
+            </p>
+          }
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="unit">Unit</label>
+          <input
+            id="unit"
+            class="field__input"
+            type="text"
+            autocomplete="off"
+            placeholder="&deg;C"
+            aria-describedby="unit-errors"
+            [attr.aria-invalid]="sensorForm.unit().touched() && sensorForm.unit().invalid()"
+            [formField]="sensorForm.unit"
+          />
+          @if (sensorForm.unit().touched()) {
+            <p class="field__errors" id="unit-errors">
+              @for (error of sensorForm.unit().errors(); track $index) {
+                <span>{{ error.message }}</span>
+              }
+            </p>
+          }
+        </div>
+      </div>
+
+      <div class="sensor-form__actions">
+        <a class="sensor-form__cancel" routerLink="/sensors">Cancel</a>
+        <button class="sensor-form__submit" type="submit" [disabled]="sensorForm().submitting()">
+          <span class="sensor-form__submit-label">
+            {{ isEdit() ? 'Save changes' : 'Create sensor' }}
+          </span>
+          @if (sensorForm().submitting()) {
+            <span class="sensor-form__spinner" aria-hidden="true"></span>
+          }
+        </button>
+      </div>
+    </form>
+  }
+</section>

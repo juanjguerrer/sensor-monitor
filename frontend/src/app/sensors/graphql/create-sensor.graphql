@@ -1,0 +1,12 @@
+mutation CreateSensor($name: String!, $locationId: Int!, $unit: String!, $type: String!) {
+  createSensor(name: $name, locationId: $locationId, unit: $unit, type: $type) {
+    id
+    name
+    unit
+    type
+    location {
+      id
+      name
+    }
+  }
+}

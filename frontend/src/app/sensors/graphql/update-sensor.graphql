@@ -1,0 +1,18 @@
+mutation UpdateSensor(
+  $id: Int!
+  $name: String!
+  $locationId: Int!
+  $unit: String!
+  $type: String!
+) {
+  updateSensor(id: $id, name: $name, locationId: $locationId, unit: $unit, type: $type) {
+    id
+    name
+    unit
+    type
+    location {
+      id
+      name
+    }
+  }
+}

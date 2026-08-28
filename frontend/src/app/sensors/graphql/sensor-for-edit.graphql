@@ -1,0 +1,11 @@
+query GetSensorForEdit($id: Int!) {
+  sensor(id: $id) {
+    id
+    name
+    unit
+    type
+    location {
+      id
+    }
+  }
+}

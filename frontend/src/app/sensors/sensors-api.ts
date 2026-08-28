@@ -1,8 +1,16 @@
 import { inject, Service } from '@angular/core';
 import { Apollo } from 'apollo-angular';
-import { GetAnomaliesDocument, GetSensorDetailDocument, GetSensorsDocument, GetSensorsQuery } from '../generated/graphql';
+import { CreateSensorDocument, GetAnomaliesDocument, GetLocationsDocument, GetSensorDetailDocument, GetSensorForEditDocument, GetSensorsDocument, GetSensorsQuery, UpdateSensorDocument } from '../generated/graphql';
 export type SensorListItem = GetSensorsQuery['sensors'][number];
 const LIVE_INTERVAL = 5000;
+
+export interface SensorInput {
+  id: number;
+  name: string;
+  locationId: number;
+  type: string;
+  unit: string;
+}
 @Service()
 export class SensorsApi {
   private readonly apollo = inject(Apollo);
@@ -29,6 +37,36 @@ export class SensorsApi {
       variables: { sensorId, limit, threshold },
       errorPolicy: 'all',
       pollInterval: LIVE_INTERVAL,
+    });
+  }
+
+  watchLocations() {
+    return this.apollo.watchQuery({
+      query: GetLocationsDocument,
+      errorPolicy: 'all',
+    });
+  }
+
+  getSensor(id: number) {
+    return this.apollo.query({
+      query: GetSensorForEditDocument,
+      variables: { id },
+      errorPolicy: 'all',
+    });
+  }
+
+  createSensor(input: Omit<SensorInput, 'id'>) {
+    return this.apollo.mutate({
+      mutation: CreateSensorDocument,
+      variables: input,
+      refetchQueries: [{ query: GetSensorsDocument }],
+    });
+  }
+
+  updateSensor(input: SensorInput) {
+    return this.apollo.mutate({
+      mutation: UpdateSensorDocument,
+      variables: input,
     });
   }
 }

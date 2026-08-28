@@ -1,19 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ApolloTestingModule } from 'apollo-angular/testing';
-import { SensorsList } from './sensors-list';
+import { SensorForm } from './sensor-form';
 
-describe('SensorsList', () => {
-  let component: SensorsList;
-  let fixture: ComponentFixture<SensorsList>;
+describe('SensorForm', () => {
+  let component: SensorForm;
+  let fixture: ComponentFixture<SensorForm>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SensorsList, ApolloTestingModule],
+      imports: [SensorForm, ApolloTestingModule],
       providers: [provideRouter([])],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(SensorsList);
+    // No id set: this is the create case, where the input stays undefined.
+    fixture = TestBed.createComponent(SensorForm);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

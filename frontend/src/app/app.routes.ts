@@ -18,8 +18,17 @@ export const routes: Routes = [
         loadComponent: () => import('./sensors/sensors-list/sensors-list').then((m) => m.SensorsList),
       },
       {
+        path: 'sensors/new',
+        loadComponent: () => import('./sensors/sensor-form/sensor-form').then((m) => m.SensorForm),
+      },
+      {
         path: 'sensors/:id',
         loadComponent: () => import('./sensors/sensor-detail/sensor-detail').then((m) => m.SensorDetail),
+        canActivate: [numericIdGuard]
+      },
+      {
+        path: 'sensors/:id/edit',
+        loadComponent: () => import('./sensors/sensor-form/sensor-form').then((m) => m.SensorForm),
         canActivate: [numericIdGuard]
       },
       {

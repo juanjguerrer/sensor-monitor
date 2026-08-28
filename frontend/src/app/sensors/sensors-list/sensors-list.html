@@ -4,6 +4,7 @@
     @if (!loading() && !error() && sensors().length > 0) {
       <span class="sensors__count">{{ sensors().length }}</span>
     }
+    <a class="sensors__new" routerLink="/sensors/new">New sensor</a>
   </header>
 
   @if (loading()) {

@@ -35,7 +35,10 @@
   } @else {
     @if (sensor(); as sensor) {
       <header class="detail__header">
-        <h1 class="detail__name">{{ sensor.name }}</h1>
+        <div class="detail__heading">
+          <h1 class="detail__name">{{ sensor.name }}</h1>
+          <a class="detail__edit" [routerLink]="['/sensors', sensor.id, 'edit']">Edit</a>
+        </div>
         <dl class="detail__meta">
           <div class="detail__meta-item">
             <dt class="detail__meta-label">Location</dt>
