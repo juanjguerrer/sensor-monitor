@@ -46,7 +46,7 @@ export class SensorDetail {
   protected readonly deleting = signal(false);
   protected readonly deleteError = signal<string | null>(null);
 
-  protected readonly onDelete = (id: number, name: string) => {
+  protected async onDelete (id: number, name: string) {
     this.deleteError.set(null);
     if (confirm(`Are you sure you want to delete sensor "${name}"?`)) {
       this.deleting.set(true);
