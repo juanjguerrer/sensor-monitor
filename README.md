@@ -19,11 +19,13 @@ rather than delegating it.
 | Relations + DataLoader batching | Working |
 | Docker + docker-compose | Working |
 | GitHub Actions CI | Working |
-| Angular frontend | Not started |
+| Angular frontend — auth, sensor CRUD, live readings, anomalies | Working |
 | Continuous deployment | Not started |
 | Python AI agent | Not started |
 
 ## Stack
+
+**Backend**
 
 - **Node.js 22** + **TypeScript** (strict, plus `noUncheckedIndexedAccess` and
   `exactOptionalPropertyTypes`)
@@ -37,6 +39,16 @@ rather than delegating it.
 - **Docker** + **docker-compose** — the API, the database and the migration step as
   three containers
 - **GitHub Actions** — type check, tests, migrations against a real Postgres, image build
+
+**Frontend**
+
+- **Angular 22** — standalone components, **zoneless** change detection, signals throughout
+- **Signal Forms** (`@angular/forms/signals`) — the v22 forms API, not reactive forms
+- **apollo-angular** + **Apollo Client 4** — normalized cache, polling, error link
+- **GraphQL Code Generator** — query result types derived from the same live schema the
+  backend generates its resolver types from
+- **Vitest** — the v22 default test runner, replacing Karma
+- **ESLint** (`angular-eslint`) — with the generated file excluded
 
 ## Requirements
 
@@ -130,6 +142,68 @@ browser at that address.
 Note that this is a *different* server from the containerized one on port 4001, backed by
 a *different* database. Running both at once is a reliable way to confuse yourself about
 where your data went.
+
+## Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Served at **`http://localhost:4200/`**. The backend must be running on 4000 — the endpoint
+comes from `src/environments/environment.development.ts`, swapped in by the `development`
+build configuration.
+
+Sign in with the seeded `admin` / `admin123`.
+
+To watch readings arrive live, run the simulator alongside the dev server:
+
+```bash
+npm --prefix backend run simulate:live
+```
+
+That appends one reading every five seconds until interrupted, which is what the detail
+page's five-second poll is there to pick up. `npm run simulate` is the other mode: it
+deletes a sensor's readings and backfills 200 of them spaced two minutes apart, then
+exits — useful for giving anomaly detection enough history to work with.
+
+**Screens**
+
+| Route | What it does |
+|---|---|
+| `/login` | The only unauthenticated route |
+| `/sensors` | Sensor list |
+| `/sensors/new` | Create a sensor |
+| `/sensors/:id` | Detail — live readings, plus anomalies |
+| `/sensors/:id/edit` | Edit a sensor |
+
+Everything except `/login` sits under a shell route carrying `authGuard`, so new routes
+nested there are protected by default rather than by remembering to add a guard.
+
+**Regenerating query types**
+
+```bash
+npm run codegen
+```
+
+Same constraint as the backend: the dev server must be running, since the schema is read
+over introspection. Both generators point at the same live schema, so a backend field
+rename surfaces as a frontend compile error rather than a runtime surprise.
+
+**Tests and lint**
+
+```bash
+npm test
+```
+
+```bash
+npm run lint
+```
+
+14 tests. They assert that each component constructs — thin, but the `ApolloTestingModule`
+harness is wired, so a real test is a matter of flushing a response and asserting on the
+derived signals.
 
 ## Docker
 
@@ -253,9 +327,13 @@ accepted at table-creation time but fails later, at the moment a referenced row 
 npm test
 ```
 
-100 tests across 9 files, in about two seconds. **Nothing in the suite touches PostgreSQL
+104 tests across 9 files, in about two seconds. **Nothing in the suite touches PostgreSQL
 and nothing opens a socket** — the repository is mocked at the boundary, which is possible
 only because `db/` takes plain values rather than request-scoped objects.
+
+That boundary has a cost worth naming: the SQL strings in `db/repository.ts` are never
+executed by anything, so a placeholder typo is invisible to all 104 tests and only shows up
+when a real query runs.
 
 | File | Covers |
 |---|---|
@@ -272,7 +350,7 @@ only because `db/` takes plain values rather than request-scoped objects.
 Three of these assert properties that are otherwise invisible:
 
 - **Nothing reaches the data layer on a rejected request.** `schema.auth.test.ts` runs all
-  eight guarded fields anonymously and then asserts every repository function was never
+  nine guarded fields anonymously and then asserts every repository function was never
   called. That's the difference between refusing a request and filtering results after the
   query has already run.
 - **Postgres detail never leaks.** `errorHandling.test.ts` serialises the formatted error
@@ -313,7 +391,7 @@ npx tsc --noEmit
 | `psql -f seed_base.sql` | The seed runs |
 | the same command again | The seed is idempotent |
 | `npx tsc --noEmit` | The project compiles |
-| `npm test` | 100 tests pass, including that every schema field refuses anonymous callers |
+| `npm test` | 104 tests pass, including that every schema field refuses anonymous callers |
 | `docker build` | The Dockerfile still works |
 
 The migration step is the one that earns its place. Migrations are hand-written and only
@@ -391,6 +469,7 @@ regenerate, then go back to the normal script.
 |---|---|
 | `sensors` | All sensors |
 | `sensor(id)` | One sensor, or `null` if it doesn't exist |
+| `locations` | All locations, ordered by name — backs the form's location picker |
 | `Sensor.location` | The sensor's location, batched through DataLoader |
 | `readings(sensorId, limit)` | Readings for a sensor, newest first (`limit` defaults to 10) |
 | `anomalies(sensorId, limit, threshold)` | Readings more than `threshold` standard deviations from the mean of the last `limit` readings (`limit` defaults to 50, `threshold` to 3) |
@@ -465,7 +544,13 @@ Stateless JWT. `login` verifies a password against `users.password_hash` with bc
 returns a signed token carrying the user id; every other field requires that token.
 
 The seed creates one user — `admin` / `admin123`, for local development only. Tokens
-expire after an hour.
+expire after 24 hours — a development convenience, and the first thing to shorten before
+this is exposed anywhere real.
+
+On the frontend the token lives in `localStorage`, which survives a refresh at the cost of
+being readable by any XSS. An acceptable trade for an internal dashboard; the alternative
+is `httpOnly` cookies, which would mean the backend issuing a cookie rather than returning
+a token, plus CORS with credentials.
 
 ```
 auth/password.ts   hash / compare — pure, no I/O
@@ -526,12 +611,21 @@ message, with the full Postgres detail logged server-side and never sent to the 
 | Updating or deleting a missing sensor | `SENSOR_NOT_FOUND` |
 | No token sent | `UNAUTHENTICATED` |
 | Token invalid or expired | `UNAUTHENTICATED`, HTTP 401 |
-| Wrong username or password | `UNAUTHENTICATED` |
+| Wrong username or password | `INVALID_CREDENTIALS` |
+| Threshold out of range, or too few readings for it | `BAD_USER_INPUT` |
 | Anything unrecognised | `INTERNAL_SERVER_ERROR` |
 
-The three authentication failures share one code on purpose, but carry different messages.
-A client can tell "log in" from "your password was wrong" — while nothing reveals *which*
-of username or password failed.
+Bad credentials and a missing token carry **different codes**, which matters more than it
+looks. The frontend's Apollo error link reacts to `UNAUTHENTICATED` by clearing the session
+and redirecting to `/login`; if a wrong password shared that code, every failed login
+attempt would trigger a logout-and-redirect instead of showing "wrong password". Neither
+message reveals *which* of username or password failed.
+
+`BAD_USER_INPUT` covers two cases on `anomalies`, distinguished by a `maxZScore` extension
+present only on the second: a threshold outside `(0, 10]`, and a batch too small for the
+threshold to be reachable at all. The second is routine — with the default threshold of 3
+you need at least 11 readings — so the UI presents it as "not enough readings yet" rather
+than as an error.
 
 ## Project structure
 
@@ -581,9 +675,46 @@ backend/
 ├── jest.config.js
 ├── jest.setup.ts                   # Sets JWT_SECRET before test modules load
 └── tsconfig.json
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── core/
+│   │   │   ├── auth/
+│   │   │   │   ├── session.ts          # Token state — no dependencies at all
+│   │   │   │   ├── auth-api.ts         # The login mutation
+│   │   │   │   ├── auth-interceptor.ts # Attaches the Bearer header
+│   │   │   │   ├── auth-guard.ts       # authGuard + guestGuard
+│   │   │   │   ├── decode-jwt.ts       # Reads `exp` — never verifies
+│   │   │   │   └── graphql/
+│   │   │   └── graphql/
+│   │   │       └── error-link.ts       # UNAUTHENTICATED → clear session, redirect
+│   │   ├── layout/
+│   │   │   ├── shell/                  # Header + router-outlet, carries authGuard
+│   │   │   └── header/                 # Brand + logout
+│   │   ├── login/
+│   │   ├── sensors/
+│   │   │   ├── graphql/                # Every document for the feature
+│   │   │   ├── sensors-api.ts          # One service, all sensor operations
+│   │   │   ├── numeric-id-guard.ts     # Rejects non-numeric :id
+│   │   │   ├── sensors-list/
+│   │   │   ├── sensor-detail/
+│   │   │   ├── sensor-anomalies/       # Own query, own states
+│   │   │   └── sensor-form/            # Create and edit share one component
+│   │   ├── generated/
+│   │   │   └── graphql.ts              # Generated, do not edit by hand
+│   │   ├── app.config.ts               # Providers: router, http, Apollo link chain
+│   │   └── app.routes.ts
+│   ├── environments/                   # graphqlUrl, swapped by build configuration
+│   └── styles.scss                     # --app-* design tokens, light and dark
+├── codegen.yml
+└── eslint.config.js
 docker-compose.yml                  # db + migrate + seed + backend
 .github/workflows/ci.yml            # Type check, tests, migrations, image build
 ```
+
+The frontend mirrors the backend's layering: `core/auth/session.ts` has no dependencies —
+not Apollo, not Router — which is what lets the interceptor inject it without a circular
+reference. Each feature owns its `graphql/` folder, its components, and one API service.
 
 Each layer is independent of the one above it: `db/` knows nothing about GraphQL, and
 `analytics/` and `auth/` know nothing about either — they take plain data and return plain
@@ -601,12 +732,21 @@ file.
 - [x] `detectAnomalies` — a pure function over readings, no database, no GraphQL
 - [x] Anomaly queries in the schema
 - [x] `src/scripts/simulate.ts` — generate realistic reading history
-- [x] Jest test suite — 100 tests, no database and no socket
+- [x] Jest test suite — 104 tests, no database and no socket
 - [x] Versioned schema migrations with node-pg-migrate
 - [x] Docker + docker-compose, with automated migrations and seeding
 - [x] GitHub Actions CI — type check, tests, migrations against a real Postgres
 - [x] JWT authentication — every field except `login` requires a token
 - [x] `Sensor.location` field resolver, N+1 solved with per-request DataLoader
-- [ ] Angular 20 frontend with apollo-angular
+- [x] Angular 22 frontend — zoneless, signals, apollo-angular
+- [x] Login, route guards, and a centralised Apollo error link for expired sessions
+- [x] Sensor list and detail, with five-second polling for live readings
+- [x] Anomalies on the detail page, with "not enough readings" as its own state
+- [x] Sensor create and edit with Signal Forms
+- [ ] Delete a sensor, with confirmation
+- [ ] A toast service — mutation feedback and redirect reasons
+- [ ] `me` query, so the header can show who is signed in
+- [ ] Real frontend tests — flush a response, assert the derived signals
+- [ ] Pause polling while the tab is hidden
 - [ ] Continuous deployment
 - [ ] Python agent for anomaly detection
