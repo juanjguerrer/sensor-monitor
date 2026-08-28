@@ -37,6 +37,7 @@ async function run(query: string, userId: number | null = null) {
 const guardedFields: [string, string][] = [
   ['Query.sensors', '{ sensors { id } }'],
   ['Query.sensor', '{ sensor(id: 1) { id } }'],
+  ['Query.locations', '{ locations { id } }'],
   ['Query.readings', '{ readings(sensorId: 1) { id } }'],
   ['Query.anomalies', '{ anomalies(sensorId: 1) { readingId } }'],
   ['Mutation.createSensor', 'mutation { createSensor(name: "a", locationId: 1, unit: "C", type: "t") { id } }'],

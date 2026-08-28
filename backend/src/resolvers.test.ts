@@ -33,6 +33,13 @@ describe('every guarded field refuses an anonymous caller', () => {
     await expect(resolvers.Query.sensors(parent, {}, anonymous)).rejects.toThrow(UnauthenticatedError);
   });
 
+  it('rejects Query.locations', async () => {
+    await expect(resolvers.Query.locations(parent, {}, anonymous)).rejects.toThrow(
+      UnauthenticatedError,
+    );
+    expect(repo.listLocations).not.toHaveBeenCalled();
+  });
+
   it('rejects Mutation.deleteSensor', async () => {
     await expect(resolvers.Mutation.deleteSensor(parent, { id: 1 }, anonymous)).rejects.toThrow(
       UnauthenticatedError,
@@ -44,6 +51,18 @@ describe('every guarded field refuses an anonymous caller', () => {
     // all, rather than being filtered after the query has already run.
     await expect(resolvers.Query.sensors(parent, {}, anonymous)).rejects.toThrow(UnauthenticatedError);
     expect(repo.listSensors).not.toHaveBeenCalled();
+  });
+});
+
+describe('Query.locations', () => {
+  it('returns the rows the repository hands back', async () => {
+    const rows = [
+      { id: 2, name: 'Boiler room', plantId: 1, description: null },
+      { id: 1, name: 'Cold store', plantId: 1, description: 'Chilled' },
+    ];
+    repo.listLocations.mockResolvedValue(rows);
+
+    await expect(resolvers.Query.locations(parent, {}, signedIn)).resolves.toEqual(rows);
   });
 });
 

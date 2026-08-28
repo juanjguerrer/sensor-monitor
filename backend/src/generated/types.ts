@@ -82,6 +82,7 @@ export type MutationUpdateSensorArgs = {
 export type Query = {
   __typename?: 'Query';
   anomalies: Array<Anomaly>;
+  locations: Array<Location>;
   readings: Array<Reading>;
   sensor?: Maybe<Sensor>;
   sensors: Array<Sensor>;
@@ -253,6 +254,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   anomalies?: Resolver<Array<ResolversTypes['Anomaly']>, ParentType, ContextType, RequireFields<QueryAnomaliesArgs, 'limit' | 'sensorId' | 'threshold'>>;
+  locations?: Resolver<Array<ResolversTypes['Location']>, ParentType, ContextType>;
   readings?: Resolver<Array<ResolversTypes['Reading']>, ParentType, ContextType, RequireFields<QueryReadingsArgs, 'limit' | 'sensorId'>>;
   sensor?: Resolver<Maybe<ResolversTypes['Sensor']>, ParentType, ContextType, RequireFields<QuerySensorArgs, 'id'>>;
   sensors?: Resolver<Array<ResolversTypes['Sensor']>, ParentType, ContextType>;

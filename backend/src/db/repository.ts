@@ -28,7 +28,7 @@ export async function getSensorById(id: number) {
 
 export async function updateSensor(sensor: Sensor, userId: number) {
   const result = await pool.query<Sensor>(
-    'UPDATE sensors SET name = $1, location_id = $2, unit = $3, type = $4, updated_at = NOW(), updated_by = $6 WHERE id = $7 RETURNING id, name, location_id AS "locationId", unit, type, created_by AS "createdBy"',
+    'UPDATE sensors SET name = $1, location_id = $2, unit = $3, type = $4, updated_at = NOW(), updated_by = $5 WHERE id = $6 RETURNING id, name, location_id AS "locationId", unit, type, created_by AS "createdBy"',
     [sensor.name, sensor.locationId, sensor.unit, sensor.type, userId, sensor.id]
   );
   const row = result.rows[0];
@@ -75,6 +75,13 @@ export async function findUserByUsername(username: string) {
   );
   const row = result.rows[0] ?? null;
   return row;
+}
+
+export async function listLocations() {
+  const result = await pool.query<Location>(
+    'SELECT id, name, plant_id AS "plantId", description FROM locations ORDER BY name'
+  );
+  return result.rows;
 }
 
 export async function getLocationById(id: number) {

@@ -1,6 +1,6 @@
 import { GraphQLError } from 'graphql';
 import { detectAnomalies, maxZScore } from './analytics/detectAnomalies';
-import { addReading, createSensor, deleteSensor, findUserByUsername, getLocationById, getSensorById, listReadings, listSensors, updateSensor } from './db/repository';
+import { addReading, createSensor, deleteSensor, findUserByUsername, getLocationById, getSensorById, listLocations, listReadings, listSensors, updateSensor } from './db/repository';
 import type { Resolvers } from './generated/types';
 import { sign } from './auth/token';
 import { comparePassword } from './auth/password';
@@ -22,6 +22,10 @@ export const resolvers = {
     sensor: async (_, { id }, context) => {
       requireUser(context);
       return await getSensorById(id);
+    },
+    locations: async (_, _2, context) => {
+      requireUser(context);
+      return await listLocations();
     },
     readings: async (_, { sensorId, limit }, context) => {
       requireUser(context);

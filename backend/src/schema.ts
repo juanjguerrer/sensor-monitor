@@ -17,7 +17,8 @@ export const typeDefs = `#graphql
 
   type Query {
     sensors: [Sensor!]!,
-    sensor(id: Int!): Sensor
+    sensor(id: Int!): Sensor,
+    locations: [Location!]!
   }
 
   type Mutation {
