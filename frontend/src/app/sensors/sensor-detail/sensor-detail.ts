@@ -2,10 +2,12 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, numberAttr
 import { SensorsApi } from '../sensors-api';
 import { DatePipe } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { switchMap } from 'rxjs';
+import { combineLatest, switchMap } from 'rxjs';
 import { Router, RouterLink } from '@angular/router';
 import { SensorAnomalies } from '../sensor-anomalies/sensor-anomalies';
 import { Toaster } from '../../core/toast/toaster';
+import { Visibility } from '../../core/visibility';
+import { environment } from '../../../environments/environment';
 
 @Component({
   imports: [
@@ -22,11 +24,13 @@ export class SensorDetail {
   private readonly sensorApi = inject(SensorsApi);
   private readonly router = inject(Router);
   private readonly toaster = inject(Toaster);
+  private readonly visibility = inject(Visibility);
+  visible = this.visibility.visible;
   readonly id = input.required({ transform: numberAttribute });
 
   private readonly result = toSignal(
-    toObservable(this.id).pipe(
-      switchMap((id) => this.sensorApi.watchSensorDetail(id).valueChanges)
+    combineLatest([toObservable(this.id), toObservable(this.visible)]).pipe(
+      switchMap(([id, visible]) => this.sensorApi.watchSensorDetail(id, visible ? environment.pollIntervalMs : 0).valueChanges)
     )
   )
 
