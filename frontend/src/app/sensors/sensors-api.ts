@@ -27,6 +27,7 @@ export class SensorsApi {
       variables: { id, limit },
       errorPolicy: 'all',
       pollInterval,
+      fetchPolicy: 'cache-and-network'
     });
   }
 
@@ -36,6 +37,7 @@ export class SensorsApi {
       variables: { sensorId, limit, threshold },
       errorPolicy: 'all',
       pollInterval,
+      fetchPolicy: 'cache-and-network'
     });
   }
 
