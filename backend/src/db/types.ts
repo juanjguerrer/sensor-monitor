@@ -30,4 +30,4 @@ export interface Location {
   description: string | null;
 }
 
-export type UserCredentials = Pick<User, 'id' | 'passwordHash'>;
+export type UserCredentials = Pick<User, 'id' | 'username' | 'email' | 'passwordHash'>;

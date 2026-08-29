@@ -58,7 +58,8 @@ export const typeDefs = `#graphql
   }
 
   type LoginResponse {
-    token: String!
+    token: String!,
+    user: User!
   }
 
   extend type Mutation {

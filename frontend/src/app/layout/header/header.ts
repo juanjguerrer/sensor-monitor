@@ -17,7 +17,7 @@ export class Header {
   private readonly apollo = inject(Apollo);
   private readonly router = inject(Router);
   protected readonly loggingOut = signal(false);
-
+  protected readonly user = this.session.user;
   protected async logout() {
     if (this.loggingOut()) return;
     this.loggingOut.set(true);

@@ -70,7 +70,7 @@ export async function listReadings(sensorId: number, limit: number) {
 
 export async function findUserByUsername(username: string) {
   const result = await pool.query<UserCredentials>(
-    'SELECT id, username, password_hash AS "passwordHash" FROM users WHERE username = $1',
+    'SELECT id, username, password_hash AS "passwordHash", email FROM users WHERE username = $1',
     [username]
   );
   const row = result.rows[0] ?? null;

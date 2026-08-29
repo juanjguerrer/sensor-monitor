@@ -45,6 +45,39 @@
     letter-spacing: -0.01em;
   }
 
+  &__account {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  &__user {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3125rem;
+    min-width: 0;
+    font-size: 0.8125rem;
+  }
+
+  &__user-label {
+    flex: none;
+    color: var(--app-muted);
+  }
+
+  &__username {
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__email {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &__logout {
     position: relative;
     display: inline-flex;
@@ -110,5 +143,13 @@
 
   .header__spinner {
     animation: none;
+  }
+}
+
+// On narrow screens the brand and the button are what matter; "Signed in as"
+// is the first thing worth dropping.
+@media (max-width: 32rem) {
+  .header__user-label {
+    display: none;
   }
 }

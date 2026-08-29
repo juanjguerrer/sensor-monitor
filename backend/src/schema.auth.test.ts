@@ -81,12 +81,37 @@ describe('anonymous access to the schema', () => {
 
 describe('login is the one exception', () => {
   it('succeeds without a token', async () => {
-    repo.findUserByUsername.mockResolvedValue({ id: 7, passwordHash: await hashPassword('correct') });
+    repo.findUserByUsername.mockResolvedValue({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: await hashPassword('correct'),
+    });
 
     const result = await run('mutation { login(username: "admin", password: "correct") { token } }');
 
     expect(result.errors).toBeUndefined();
     expect((result.data?.login as { token: string }).token).toBeTruthy();
+  });
+
+  it('returns the user through the schema without leaking the hash', async () => {
+    repo.findUserByUsername.mockResolvedValue({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: await hashPassword('correct'),
+    });
+
+    const result = await run(
+      'mutation { login(username: "admin", password: "correct") { token user { id username email } } }',
+    );
+
+    expect(result.errors).toBeUndefined();
+    expect((result.data?.login as { user: unknown }).user).toEqual({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+    });
   });
 
   it('reports bad credentials rather than a missing token', async () => {

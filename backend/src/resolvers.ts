@@ -86,14 +86,16 @@ export const resolvers = {
       return { ...newReading, recordedAt: newReading.recordedAt.toISOString() };
     },
     login: async (_, { username, password }) => {
-      const user = await findUserByUsername(username);
-      const hash = user ? user.passwordHash : DUMMY_PASSWORD_HASH;
+      const row = await findUserByUsername(username);
+      const hash = row ? row.passwordHash : DUMMY_PASSWORD_HASH;
       const valid = await comparePassword(password, hash);
-      if (!user || !valid) {
+      if (!row || !valid) {
         throw new InvalidCredentialsError();
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, ...user } = row;
       const token = sign(user.id);
-      return { token };
+      return { token, user };
     }
   },
   Sensor:  {

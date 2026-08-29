@@ -158,15 +158,54 @@ describe('Mutation.createSensor', () => {
 
 describe('Mutation.login', () => {
   it('returns a token that verifies back to the user id', async () => {
-    repo.findUserByUsername.mockResolvedValue({ id: 7, passwordHash: await hashPassword('correct') });
+    repo.findUserByUsername.mockResolvedValue({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: await hashPassword('correct'),
+    });
 
     const result = await resolvers.Mutation.login(parent, { username: 'admin', password: 'correct' });
 
     expect(verify(result.token)).toEqual({ userId: 7 });
   });
 
+  it('returns the user alongside the token, so the client needs no follow-up query', async () => {
+    repo.findUserByUsername.mockResolvedValue({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: await hashPassword('correct'),
+    });
+
+    const result = await resolvers.Mutation.login(parent, { username: 'admin', password: 'correct' });
+
+    expect(result.user).toEqual({ id: 7, username: 'admin', email: 'admin@example.com' });
+  });
+
+  it('never hands the password hash back to the caller', async () => {
+    // The schema would filter it anyway, since User does not declare the field.
+    // Asserting on the resolver's own return value keeps that from being the
+    // only thing standing between the hash and the wire.
+    repo.findUserByUsername.mockResolvedValue({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: await hashPassword('correct'),
+    });
+
+    const result = await resolvers.Mutation.login(parent, { username: 'admin', password: 'correct' });
+
+    expect(result.user).not.toHaveProperty('passwordHash');
+  });
+
   it('rejects a wrong password', async () => {
-    repo.findUserByUsername.mockResolvedValue({ id: 7, passwordHash: await hashPassword('correct') });
+    repo.findUserByUsername.mockResolvedValue({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: await hashPassword('correct'),
+    });
 
     await expect(
       resolvers.Mutation.login(parent, { username: 'admin', password: 'wrong' }),
@@ -184,7 +223,12 @@ describe('Mutation.login', () => {
   it('is reachable without a token', async () => {
     // login is the one field that must work anonymously — otherwise nobody
     // could ever obtain a token in the first place.
-    repo.findUserByUsername.mockResolvedValue({ id: 7, passwordHash: await hashPassword('correct') });
+    repo.findUserByUsername.mockResolvedValue({
+      id: 7,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: await hashPassword('correct'),
+    });
 
     const result = await resolvers.Mutation.login(parent, { username: 'admin', password: 'correct' });
 

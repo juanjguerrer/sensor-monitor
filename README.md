@@ -542,6 +542,7 @@ regenerate, then go back to the normal script.
 | `sensors` | All sensors |
 | `sensor(id)` | One sensor, or `null` if it doesn't exist |
 | `locations` | All locations, ordered by name — backs the form's location picker |
+| `me` | The signed-in user. Never null: `requireUser` throws for an anonymous caller |
 | `Sensor.location` | The sensor's location, batched through DataLoader |
 | `readings(sensorId, limit)` | Readings for a sensor, newest first (`limit` defaults to 10) |
 | `anomalies(sensorId, limit, threshold)` | Readings more than `threshold` standard deviations from the mean of the last `limit` readings (`limit` defaults to 50, `threshold` to 3) |
@@ -554,7 +555,7 @@ regenerate, then go back to the normal script.
 | `updateSensor(id, name, locationId, unit, type)` | The updated sensor |
 | `deleteSensor(id)` | The deleted sensor's id |
 | `addReading(sensorId, value)` | The created reading |
-| `login(username, password)` | `{ token }` — the only field callable without a token |
+| `login(username, password)` | `{ token, user }` — the only field callable without a token |
 
 Timestamps cross the wire as ISO 8601 strings.
 
@@ -823,7 +824,9 @@ file.
 - [x] Delete a sensor, with confirmation and cache eviction
 - [x] A toast service — mutation feedback and redirect reasons
 - [x] Frontend tests that flush responses and assert what renders
-- [ ] `me` query, so the header can show who is signed in
+- [x] `me` query, and the user returned by `login` so the header needs no follow-up request
+- [x] ESLint on both halves, wired into CI
+- [x] The frontend served by nginx in Docker, with the API proxied onto the same origin
 - [ ] Pause polling while the tab is hidden
 - [ ] Continuous deployment
 - [ ] Python agent for anomaly detection

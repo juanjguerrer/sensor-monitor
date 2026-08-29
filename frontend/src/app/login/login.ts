@@ -42,8 +42,9 @@ export class Login {
     await submit(this.loginForm, async () => {
     const { username, password } = this.loginModel();
     try {
-      const token = await firstValueFrom(this.authApi.login(username, password));
+      const { token, user } = await firstValueFrom(this.authApi.login(username, password));
       this.session.setToken(token);
+      this.session.setUser(user);
       await this.router.navigateByUrl('/sensors');
     } catch (error) {
       console.error('Login error:', error);

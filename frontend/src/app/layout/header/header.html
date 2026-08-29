@@ -5,17 +5,27 @@
       <span class="header__name">Sensor Monitor</span>
     </a>
 
-    <button
-      class="header__logout"
-      type="button"
-      [disabled]="loggingOut()"
-      [attr.aria-busy]="loggingOut()"
-      (click)="logout()"
-    >
-      <span class="header__logout-label">Log out</span>
-      @if (loggingOut()) {
-        <span class="header__spinner" aria-hidden="true"></span>
+    <div class="header__account">
+      @if (user(); as user) {
+        <span class="header__user">
+          <span class="header__user-label">Signed in as</span>
+          <span class="header__username">{{ user.username }}</span>
+          <span class="header__email">({{ user.email }})</span>
+        </span>
       }
-    </button>
+
+      <button
+        class="header__logout"
+        type="button"
+        [disabled]="loggingOut()"
+        [attr.aria-busy]="loggingOut()"
+        (click)="logout()"
+      >
+        <span class="header__logout-label">Log out</span>
+        @if (loggingOut()) {
+          <span class="header__spinner" aria-hidden="true"></span>
+        }
+      </button>
+    </div>
   </div>
 </header>

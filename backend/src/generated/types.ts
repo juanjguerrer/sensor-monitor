@@ -34,6 +34,7 @@ export type Location = {
 export type LoginResponse = {
   __typename?: 'LoginResponse';
   token: Scalars['String']['output'];
+  user: User;
 };
 
 export type Mutation = {
@@ -252,6 +253,7 @@ export type LocationResolvers<ContextType = Context, ParentType extends Resolver
 
 export type LoginResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LoginResponse'] = ResolversParentTypes['LoginResponse']> = {
   token?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  user?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
 };
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
