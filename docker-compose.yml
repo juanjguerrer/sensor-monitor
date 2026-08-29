@@ -62,6 +62,6 @@ services:
       PGPASSWORD: ${DB_PASSWORD}
     volumes:
       - ./backend/scripts/seed_base.sql:/scripts/seed_base.sql
-    command: ["psql", "-h", "${DB_HOST}", "-U", "${DB_USER}", "-d", "${DB_NAME}", "-f", "/scripts/seed_base.sql"]
+    command: ["psql", "-h", "${DB_HOST}", "-U", "${DB_USER}", "-d", "${DB_NAME}", "-v", "admin_password=${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}", "-f", "/scripts/seed_base.sql"]
 volumes:
   db_data:

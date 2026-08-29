@@ -10,9 +10,21 @@ INSERT INTO roles (name, description)
 SELECT 'sensor_operator', 'Sensor operator role with limited access'
 WHERE NOT EXISTS (SELECT 1 FROM roles WHERE name = 'sensor_operator');
 
--- Password hash for 'admin123' using bcrypt with 10 salt rounds
+-- pgcrypto gives us bcrypt inside Postgres, so the seed takes a plaintext
+-- password from the environment and hashes it here. Nothing secret is stored
+-- in this file, and a deployment can set its own password without editing SQL.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Passed by the caller as -v admin_password=... ; psql aborts if it is missing,
+-- rather than inserting the literal string ":admin_password" as a password.
+\if :{?admin_password}
+\else
+  \echo 'ERROR: admin_password is not set. Pass it with: psql -v admin_password=...'
+  \q
+\endif
+
 INSERT INTO users (username, email, password_hash, role_id)
-SELECT 'admin', 'admin@example.com', '$2b$10$LI8jxCALz3oSMT3C16xamOqnPhxRn.JsD1iq8Po4A9SbTfdLTTVj.', (SELECT id FROM roles WHERE name = 'Admin')
+SELECT 'admin', 'admin@example.com', crypt(:'admin_password', gen_salt('bf', 10)), (SELECT id FROM roles WHERE name = 'Admin')
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 
 UPDATE roles SET created_by = (SELECT id FROM users WHERE username = 'admin'), updated_by = (SELECT id FROM users WHERE username = 'admin') WHERE name = 'Admin' AND NOT EXISTS (SELECT 1 FROM roles WHERE name = 'Admin' AND created_by IS NOT NULL AND updated_by IS NOT NULL);

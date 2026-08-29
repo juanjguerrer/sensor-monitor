@@ -136,8 +136,12 @@ npm run migrate -- up
 ```
 
 ```bash
-psql -d sensor_monitor -f scripts/seed_base.sql
+psql -d sensor_monitor -v admin_password=admin123 -f scripts/seed_base.sql
 ```
+
+The seed takes the admin password as a psql variable and hashes it with bcrypt
+through `pgcrypto`, so no password or hash is committed. Omit the variable and the
+script refuses to run rather than inserting a literal string as someone's password.
 
 ## Running
 
@@ -616,9 +620,13 @@ their slot, which makes only that key's promise reject while its neighbours reso
 Stateless JWT. `login` verifies a password against `users.password_hash` with bcrypt and
 returns a signed token carrying the user id; every other field requires that token.
 
-The seed creates one user — `admin` / `admin123`, for local development only. Tokens
-expire after 24 hours — a development convenience, and the first thing to shorten before
-this is exposed anywhere real.
+The seed creates one user, `admin`, whose password comes from `ADMIN_PASSWORD` in the
+environment and is hashed with bcrypt by `pgcrypto` at seed time — no password or hash is
+committed, and Compose refuses to start if the variable is unset. Locally that is
+`admin123`; a deployment sets its own.
+
+Tokens expire after 24 hours — a development convenience, and the first thing to shorten
+before this is exposed anywhere real. There is no refresh mechanism and no revocation.
 
 On the frontend the token lives in `localStorage`, which survives a refresh at the cost of
 being readable by any XSS. An acceptable trade for an internal dashboard; the alternative
