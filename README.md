@@ -36,8 +36,8 @@ rather than delegating it.
 - **GraphQL Code Generator** — resolver types derived from the schema
 - **DataLoader** — per-request batching for relation fields, no ORM required
 - **Jest** + **ts-jest** — unit tests over the analysis layer
-- **Docker** + **docker-compose** — the API, the database and the migration step as
-  three containers
+- **Docker** + **docker-compose** — database, migrations, seed, API and web server as
+  five containers
 - **GitHub Actions** — type check, tests, migrations against a real Postgres, image build
 
 **Frontend**
@@ -49,6 +49,7 @@ rather than delegating it.
   backend generates its resolver types from
 - **Vitest** — the v22 default test runner, replacing Karma
 - **ESLint** (`angular-eslint`) — with the generated file excluded
+- **nginx** — serves the production build and proxies the API onto the same origin
 
 ## Requirements
 
@@ -73,9 +74,17 @@ not by `localhost`.
 docker compose up
 ```
 
-That builds the API image, starts Postgres, waits for it to become healthy, runs the
-migrations, seeds the base data, and only then starts the API. Reach it at
-**`http://localhost:4001/`**.
+That builds both images, starts Postgres, waits for it to become healthy, runs the
+migrations, seeds the base data, and only then starts the API and the web server.
+
+| | URL |
+|---|---|
+| App | **`http://localhost:8080/`** |
+| API | **`http://localhost:4001/`** |
+
+Sign in with `admin` / `admin123`. In the containerized stack the app talks to the API
+through nginx on 8080, not to 4001 directly — 4001 is published so you can reach the API
+with Sandbox or curl.
 
 The database is published on host port **5433**, not 5432, so it doesn't collide with a
 PostgreSQL you may already be running locally.
@@ -237,14 +246,15 @@ success test and in neither of the failure tests.
 
 ## Docker
 
-Four services, defined in `docker-compose.yml`:
+Five services, defined in `docker-compose.yml`:
 
 | Service | Image | Role |
 |---|---|---|
 | `db` | `postgres:15` | Database. Data persists in the `db_data` named volume. |
-| `migrate` | built from the Dockerfile's `builder` stage | Runs the migrations once, then exits |
+| `migrate` | built from the backend Dockerfile's `builder` stage | Runs the migrations once, then exits |
 | `seed` | `postgres:15` | Runs `seed_base.sql` through `psql`, then exits |
-| `backend` | built from the Dockerfile's final stage | The API |
+| `backend` | built from the backend Dockerfile's final stage | The API |
+| `frontend` | built from the frontend Dockerfile — nginx | Serves the built app and proxies the API |
 
 Startup is ordered by `depends_on` conditions rather than by luck: `migrate` waits for
 `db` to pass its `pg_isready` healthcheck, `seed` waits for `migrate` to exit
@@ -257,17 +267,44 @@ read-only bind mount of `backend/scripts`.
 
 | | Host port | Container port |
 |---|---|---|
+| Frontend | 8080 | 80 |
 | API | 4001 | 4000 |
 | PostgreSQL | 5433 | 5432 |
 
-The host ports are chosen to avoid colliding with a local Node server and a local
-PostgreSQL. Containers reach each other over the internal network on the *container*
-ports — `db:5432` — regardless of what is published.
+The host ports are chosen to avoid colliding with `ng serve`, a local Node server and a
+local PostgreSQL. Containers reach each other over the internal network on the *container*
+ports — `db:5432`, `backend:4000` — regardless of what is published. Only the left-hand
+side can conflict; three containers could all listen on 80 internally without noticing
+each other.
 
-The Dockerfile is multi-stage. The `builder` stage installs every dependency and compiles
-TypeScript; the final stage keeps only production dependencies and `dist/`, so the runtime
-image ships without a compiler. `migrate` deliberately targets `builder`, because
-`node-pg-migrate` is a devDependency and does not exist in the final image.
+Both Dockerfiles are multi-stage. The backend's `builder` stage installs every dependency
+and compiles TypeScript; the final stage keeps only production dependencies and `dist/`, so
+the runtime image ships without a compiler. `migrate` deliberately targets `builder`,
+because `node-pg-migrate` is a devDependency and does not exist in the final image.
+
+The frontend builds with Node and ships on **nginx** — the runtime image contains no
+JavaScript toolchain at all, just static files and a web server.
+
+### The frontend proxy
+
+`environment.ts` sets `graphqlUrl` to the relative `/graphql`, and `nginx.conf` is what
+makes that true: it forwards `/graphql` to `backend:4000`. The browser therefore sees a
+**single origin** for both the app and the API, so CORS never enters the picture — unlike
+development, where 4200 and 4000 are different origins.
+
+The trailing slash in `proxy_pass http://backend:4000/;` is load-bearing. With it, nginx
+replaces the matched `/graphql` prefix with `/`, which is where the API actually lives.
+Without it the path is appended and every request 404s.
+
+The other rule that matters is the SPA fallback:
+
+```nginx
+try_files $uri $uri/ /index.html;
+```
+
+Without it, `/sensors/3` asks nginx for a file of that name, doesn't find one, and returns
+404 — deep links and refresh break. It never shows up in development because `ng serve`
+answers every path with `index.html` already.
 
 ```bash
 docker compose up -d
@@ -284,6 +321,11 @@ volume is empty.
 
 Seeding runs automatically. `seed_base.sql` is written to be idempotent — every insert is
 guarded by `WHERE NOT EXISTS` — so re-running the stack neither fails nor duplicates rows.
+
+That guard has a sharp edge worth knowing: it keys on "does a row with this name exist",
+so it can never *correct* a row it didn't write. A volume carrying an `admin` user seeded
+by an older version of the file keeps that user forever, and the fixed seed silently skips
+it — which looks exactly like wrong credentials. `docker compose down -v` is the way out.
 
 One thing that misleads: the API logs `http://localhost:4000/` on startup. That is printed
 from inside the container, where the app really is on 4000, and it knows nothing about the
@@ -739,9 +781,11 @@ frontend/
 │   │   └── app.routes.ts
 │   ├── environments/                   # graphqlUrl, swapped by build configuration
 │   └── styles.scss                     # --app-* design tokens, light and dark
+├── Dockerfile                          # Node builds, nginx serves
+├── nginx.conf                          # /graphql proxy + SPA fallback
 ├── codegen.yml
 └── eslint.config.js
-docker-compose.yml                  # db + migrate + seed + backend
+docker-compose.yml                  # db + migrate + seed + backend + frontend
 .github/workflows/ci.yml            # Type check, tests, migrations, image build
 ```
 
