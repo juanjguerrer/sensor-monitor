@@ -20,7 +20,7 @@ rather than delegating it.
 | Docker + docker-compose | Working |
 | GitHub Actions CI | Working |
 | Angular frontend — auth, sensor CRUD, live readings, anomalies | Working |
-| Continuous deployment | Not started |
+| Continuous deployment | Working — Render, gated on CI checks |
 | Python AI agent | Not started |
 
 ## Stack
@@ -193,6 +193,21 @@ exits — useful for giving anomaly detection enough history to work with.
 
 Everything except `/login` sits under a shell route carrying `authGuard`, so new routes
 nested there are protected by default rather than by remembering to add a guard.
+
+**Polling stops when the tab is hidden.** A root `Visibility` service exposes a signal fed
+by `document.visibilitychange`, and both polling components feed it into their query chain
+alongside the route id — so hiding the tab rebuilds the query with `pollInterval: 0` and
+showing it rebuilds with the interval from `environment.pollIntervalMs` (5s in development,
+30s in production, since real sensors write far slower than the simulator).
+
+Those two queries also set **`fetchPolicy: 'cache-and-network'`**, and that is not
+incidental. Rebuilding a query on the way back means a fresh `watchQuery`, and under the
+default `cache-first` Apollo answers it from the cache and never reaches the network — so
+returning to the tab would show stale data until the next poll tick. The bug is
+asymmetrical enough to be genuinely confusing: `GetAnomalies` appeared to refresh correctly
+while `GetSensorDetail` did not, purely because the anomalies query's previous result had
+been an error, and errors are never cached, so it had nothing to serve. Returning to a tab
+is exactly when a monitor should refresh, which is what `cache-and-network` buys.
 
 **Two ways a session ends, and they arrive differently.** A *missing* token means
 `createContext` returns `userId: null` and a resolver's `requireUser` throws — HTTP 200
@@ -491,6 +506,106 @@ job runs *on* the runner rather than inside the container network:
 A commented-out BuildKit layer-cache block sits at the end of the workflow. It is off
 deliberately: the cache has to be uploaded and downloaded on every run, which for an image
 this size costs about as much as it saves.
+
+## Deployment
+
+Hosted on Render as three pieces: a managed Postgres, the API as a Docker web service, and
+the frontend as a static site.
+
+| Piece | Type | Notes |
+|---|---|---|
+| Database | Managed Postgres | Free plan — **expires 30 days after creation** |
+| API | Web Service, Docker | Root directory `backend`, builds the existing Dockerfile |
+| Frontend | Static Site | Root `frontend`, build `npm ci && npm run build`, publish `dist/frontend/browser` |
+
+Deploys are gated on CI: Render's auto-deploy is set to **After CI Checks Pass**, so a push
+that fails lint or tests never reaches production. That is configured in Render rather than
+in the workflow — the alternative, a deploy hook called from a final Actions job, needs
+secrets and can only report that a deploy *started*.
+
+### The frontend is a static site, not the nginx container
+
+`frontend/Dockerfile` and `nginx.conf` are used by **Compose only**. Render serves the built
+files directly and does the same two jobs through its own redirect rules:
+
+| Source | Destination | Type |
+|---|---|---|
+| `/graphql` | the API's `.onrender.com` URL | Rewrite |
+| `/*` | `/index.html` | Rewrite |
+
+Rewrite, not redirect — a redirect would send the browser to the API's own origin and bring
+CORS back. The second rule is the SPA fallback, the same job as nginx's `try_files`.
+
+`environment.ts` needs no deployment-specific value: `graphqlUrl` is the relative
+`/graphql`, which both nginx and Render's rewrite make true.
+
+### Migrations are manual
+
+Render's Pre-Deploy Command is a paid feature, so migrations do **not** run on deploy. Run
+them from your machine against the **external** connection string before deploying a change
+that needs them:
+
+```bash
+npx node-pg-migrate up -m src/migrations
+```
+
+with `DATABASE_URL` set in the shell. Two details, both of which fail confusingly:
+
+**Append `?sslmode=require`.** Render's external endpoint demands SSL and `pg` will not
+offer it unless told. Without it the connection is reset and you get `ECONNRESET`, which
+mentions nothing about TLS. The **internal** URL the API uses must *not* have it — that
+traffic never leaves Render's network.
+
+**Do not use `npm run migrate:up` for this.** That script passes `--envPath .env`, which
+loads `backend/.env` and its `localhost` connection string. The failure mode is migrating
+your local database while believing you migrated production.
+
+### Seeding
+
+Once, by hand, with a real password:
+
+```bash
+psql "<external-url>?sslmode=require" -v admin_password='...' -f scripts/seed_base.sql
+```
+
+`INSERT 0 1` on the user row is the line to check. `INSERT 0 0` means a user named `admin`
+already exists and yours was skipped — the seed's `WHERE NOT EXISTS` guard cannot correct a
+row it did not write.
+
+### Two things that will catch you out
+
+**A push that touches only one directory does not rebuild the other service.** Render skips
+builds when nothing changed under a service's root directory. Change something in `backend/`
+and push only frontend files, and the API keeps running the previous image — which surfaces
+as behaviour that contradicts the source. This cost an hour: the API was still running a
+build from before `pool.ts` learned to read `DATABASE_URL`, so it fell back to `pg`'s
+default host and reported `ECONNREFUSED 127.0.0.1:5432`. Manual Deploy is the fix.
+
+**`frontend/.node-version` is load-bearing.** Render's build image ships a Node older than
+Angular 22 accepts, and the build fails on the CLI's version check. The file pins it, and
+`nvm`/`fnm` read the same file locally. The API is unaffected — its Node version is pinned
+inside the Dockerfile, which is the trade for containerising one half and not the other.
+
+### Environment variables on the API service
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | the **internal** connection string, no `sslmode` |
+| `JWT_SECRET` | generated fresh — not the one from your local `.env` |
+| `NODE_ENV` | `production` |
+
+`pool.ts` throws at import when `DATABASE_URL` is missing, so a misconfigured service
+crash-loops on startup rather than failing on the first query.
+
+### Free-tier consequences
+
+The API sleeps when idle, so the first request after a quiet period takes roughly thirty
+seconds. Static sites do not sleep, so the app loads instantly and then appears to hang on
+login — which looks like a bug and is not one.
+
+The database expiry is the one with a deadline. Moving to another provider is a single
+`DATABASE_URL` change, then migrations and a re-seed: `pool.ts` takes a connection string
+and nothing else in the codebase knows where the database lives.
 
 ## Regenerating types
 
@@ -835,6 +950,7 @@ file.
 - [x] `me` query, and the user returned by `login` so the header needs no follow-up request
 - [x] ESLint on both halves, wired into CI
 - [x] The frontend served by nginx in Docker, with the API proxied onto the same origin
-- [ ] Pause polling while the tab is hidden
+- [x] Pause polling while the tab is hidden
+- [x] Continuous deployment — Render, gated on CI checks
 - [ ] Continuous deployment
 - [ ] Python agent for anomaly detection
