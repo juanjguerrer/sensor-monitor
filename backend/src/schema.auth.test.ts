@@ -44,6 +44,7 @@ const guardedFields: [string, string][] = [
   ['Mutation.updateSensor', 'mutation { updateSensor(id: 1, name: "a", locationId: 1, unit: "C", type: "t") { id } }'],
   ['Mutation.deleteSensor', 'mutation { deleteSensor(id: 1) }'],
   ['Mutation.addReading', 'mutation { addReading(sensorId: 1, value: 1) { id } }'],
+  ['Query.me', '{ me { id } }'],
 ];
 
 describe('anonymous access to the schema', () => {
@@ -74,6 +75,7 @@ describe('anonymous access to the schema', () => {
     expect(repo.updateSensor).not.toHaveBeenCalled();
     expect(repo.deleteSensor).not.toHaveBeenCalled();
     expect(repo.addReading).not.toHaveBeenCalled();
+    expect(repo.findUserById).not.toHaveBeenCalled();
   });
 });
 

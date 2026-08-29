@@ -15,10 +15,17 @@ export const typeDefs = `#graphql
     updatedAt: String!
   }
 
+  type User {
+    id: Int!
+    username: String!
+    email: String!
+  }
+
   type Query {
     sensors: [Sensor!]!,
     sensor(id: Int!): Sensor,
-    locations: [Location!]!
+    locations: [Location!]!,
+    me: User!
   }
 
   type Mutation {

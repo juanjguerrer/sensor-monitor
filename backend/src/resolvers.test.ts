@@ -6,6 +6,7 @@ import { verify } from './auth/token';
 import * as repository from './db/repository';
 import { createLoaders } from './graphql/loaders';
 import type { Context } from './graphql/context';
+import { NotFoundError } from './db/errors';
 
 // The repository is the boundary these tests stop at: no pool, no Postgres.
 // That is only possible because db/ takes plain values rather than a Context.
@@ -63,6 +64,34 @@ describe('Query.locations', () => {
     repo.listLocations.mockResolvedValue(rows);
 
     await expect(resolvers.Query.locations(parent, {}, signedIn)).resolves.toEqual(rows);
+  });
+});
+
+describe('Query.me', () => {
+  it('returns the user the token names', async () => {
+    const user = {
+      id: 42,
+      username: 'admin',
+      email: 'admin@example.com',
+      passwordHash: 'irrelevant',
+      roleId: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    repo.findUserById.mockResolvedValue(user);
+
+    await expect(resolvers.Query.me(parent, {}, signedIn)).resolves.toEqual(user);
+    // The id comes from the context, never from the client.
+    expect(repo.findUserById).toHaveBeenCalledWith(42);
+  });
+
+  it('propagates a missing user rather than returning null', async () => {
+    // A token outlives the row it names: 24h expiry, and the user could be
+    // deleted in between. `me` is non-null, so returning null would collapse
+    // the whole response's data.
+    repo.findUserById.mockRejectedValue(new NotFoundError('User', 42));
+
+    await expect(resolvers.Query.me(parent, {}, signedIn)).rejects.toThrow(NotFoundError);
   });
 });
 

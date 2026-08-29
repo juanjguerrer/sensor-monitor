@@ -83,6 +83,7 @@ export type Query = {
   __typename?: 'Query';
   anomalies: Array<Anomaly>;
   locations: Array<Location>;
+  me: User;
   readings: Array<Reading>;
   sensor?: Maybe<Sensor>;
   sensors: Array<Sensor>;
@@ -121,6 +122,13 @@ export type Sensor = {
   name: Scalars['String']['output'];
   type: Scalars['String']['output'];
   unit: Scalars['String']['output'];
+};
+
+export type User = {
+  __typename?: 'User';
+  email: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  username: Scalars['String']['output'];
 };
 
 
@@ -207,6 +215,7 @@ export type ResolversTypes = {
   Reading: ResolverTypeWrapper<Reading>;
   Sensor: ResolverTypeWrapper<SensorRow>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
+  User: ResolverTypeWrapper<User>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -222,6 +231,7 @@ export type ResolversParentTypes = {
   Reading: Reading;
   Sensor: SensorRow;
   String: Scalars['String']['output'];
+  User: User;
 };
 
 export type AnomalyResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Anomaly'] = ResolversParentTypes['Anomaly']> = {
@@ -255,6 +265,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   anomalies?: Resolver<Array<ResolversTypes['Anomaly']>, ParentType, ContextType, RequireFields<QueryAnomaliesArgs, 'limit' | 'sensorId' | 'threshold'>>;
   locations?: Resolver<Array<ResolversTypes['Location']>, ParentType, ContextType>;
+  me?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
   readings?: Resolver<Array<ResolversTypes['Reading']>, ParentType, ContextType, RequireFields<QueryReadingsArgs, 'limit' | 'sensorId'>>;
   sensor?: Resolver<Maybe<ResolversTypes['Sensor']>, ParentType, ContextType, RequireFields<QuerySensorArgs, 'id'>>;
   sensors?: Resolver<Array<ResolversTypes['Sensor']>, ParentType, ContextType>;
@@ -275,6 +286,12 @@ export type SensorResolvers<ContextType = Context, ParentType extends ResolversP
   unit?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
+  email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  username?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type Resolvers<ContextType = Context> = {
   Anomaly?: AnomalyResolvers<ContextType>;
   Location?: LocationResolvers<ContextType>;
@@ -283,5 +300,6 @@ export type Resolvers<ContextType = Context> = {
   Query?: QueryResolvers<ContextType>;
   Reading?: ReadingResolvers<ContextType>;
   Sensor?: SensorResolvers<ContextType>;
+  User?: UserResolvers<ContextType>;
 };
 

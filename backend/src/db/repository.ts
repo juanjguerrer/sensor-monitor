@@ -101,3 +101,13 @@ export async function listLocationsByIds(ids: readonly number[]) {
   );
   return result.rows;
 }
+
+export async function findUserById(id: number) {
+  const result = await pool.query<Pick<User, 'id' | 'username' | 'email' | 'roleId'>>(
+    'SELECT id, username, email, role_id AS "roleId" FROM users WHERE id = $1',
+    [id]
+  );
+  if (!result.rows[0]) throw new NotFoundError('User', id);
+  const row = result.rows[0];
+  return row;
+}

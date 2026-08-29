@@ -19,7 +19,7 @@ export function verify(token: string): { userId: number } {
       throw new InvalidTokenError();
     }
     return { userId: payload.userId };
-  } catch (error) {
+  } catch {
     throw new InvalidTokenError();
   }
 }

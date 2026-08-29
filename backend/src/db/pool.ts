@@ -1,4 +1,4 @@
-import pg = require('pg');
+import pg from 'pg';
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -9,7 +9,7 @@ const pool = new Pool({
   port: Number(process.env.DB_PORT),
 });
 
-pool.on('error', (err, client) => {
+pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });

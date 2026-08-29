@@ -68,6 +68,9 @@ async function simulate() {
   await simulateSensorReadings(sensorId);
 }
 
-simulate().finally(() => {
-  pool.end();
-});
+void simulate()
+  .catch((error) => {
+    console.error('Error during simulation:', error);
+    process.exitCode = 1;
+  })
+  .finally(() => pool.end() );

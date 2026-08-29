@@ -1,12 +1,11 @@
 import { GraphQLError } from 'graphql';
 import { detectAnomalies, maxZScore } from './analytics/detectAnomalies';
-import { addReading, createSensor, deleteSensor, findUserByUsername, getLocationById, getSensorById, listLocations, listReadings, listSensors, updateSensor } from './db/repository';
+import { addReading, createSensor, deleteSensor, findUserById, findUserByUsername, getSensorById, listLocations, listReadings, listSensors, updateSensor } from './db/repository';
 import type { Resolvers } from './generated/types';
 import { sign } from './auth/token';
 import { comparePassword } from './auth/password';
 import { InvalidCredentialsError } from './auth/errors';
 import { requireUser } from './graphql/guards';
-import { NotFoundError } from './db/errors';
 
 // A real bcrypt hash. Used when the username doesn't exist, so a failed login
 // takes the same ~70ms either way. bcrypt only needs the salt (first 29 chars)
@@ -62,6 +61,11 @@ export const resolvers = {
         timestamp: anomaly.timestamp.toISOString()
       }));
     },
+    me: async (_, _2, context) => {
+      const userId = requireUser(context);
+      const user = await findUserById(userId);
+      return user;
+    }
   },
   Mutation: {
     createSensor: async (_, {name, locationId, unit, type}, context) => {

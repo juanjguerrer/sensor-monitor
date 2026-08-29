@@ -8,7 +8,7 @@ export interface Context {
   userId: number | null;
   loaders: ReturnType<typeof createLoaders>;
 }
-
+// eslint-disable-next-line @typescript-eslint/require-await -- Apollo's context function is typed to return a Promise
 export async function createContext({ req }: StandaloneServerContextFunctionArgument): Promise<Context> {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
