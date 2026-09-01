@@ -823,6 +823,40 @@ threshold to be reachable at all. The second is routine — with the default thr
 you need at least 11 readings — so the UI presents it as "not enough readings yet" rather
 than as an error.
 
+## Why the agent is built this way
+
+The `agent/` package is a Claude tool-calling agent that inspects the sensor fleet and
+writes a plain-language report. Three decisions shaped it, and none of them are visible
+from the code alone.
+
+**An LLM agent, not another anomaly detector.** Z-score detection already exists in the
+backend as `detectAnomalies` — pure, tested, exposed through the `anomalies` query.
+Reimplementing that in Python would have added a second copy of the same statistics and
+nothing else. The agent's value is upstream of the maths: the *model* decides which
+sensors are worth inspecting, how wide a window to examine, when a result is too thin to
+draw a conclusion from, and how to say all of that to a person. The arithmetic stays where
+it was already correct.
+
+**It reads through the GraphQL API, not the database.** Authentication, authorisation and
+the N+1 handling are solved at that layer, so the agent inherits them instead of
+duplicating them. It also means the agent runs against the deployed instance with nothing
+but a username and password — no database credentials, no network path to Postgres, no
+second place where the schema has to be known. The scheduled GitHub Actions run works for
+exactly this reason.
+
+**Read-only tools.** `list_sensors`, `get_sensor_readings` and `get_sensor_anomalies` are
+the entire surface exposed to the model. `createSensor` and `deleteSensor` exist in the
+API and are deliberately absent from the agent. The agent advises; a human acts. That is a
+sensible default for anything industrial, and it makes the blast radius of a mistaken tool
+call exactly zero.
+
+The consequence of these three is that almost all of the agent's behaviour lives in the
+system prompt and the tool descriptions rather than in Python. When reports were wrong —
+labelling a sensor with no data as "normal", inventing physical causes for a spike,
+collapsing a window that crossed midnight onto one date — the fixes were changes to
+English, or to where an error boundary was drawn, not to the loop. The loop itself is
+about thirty lines and has barely changed since it first worked.
+
 ## Project structure
 
 ```
