@@ -35,3 +35,4 @@ jobs:
         run: |
           python -m sensor_agent "Write a health report for all sensors." \
             | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash
