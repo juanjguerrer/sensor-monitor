@@ -20,12 +20,15 @@ How to work:
 
 How to answer:
 - Give the report directly. Do not narrate your steps, announce what you are about to do, or open with a greeting.
-- Always report values with the sensor's unit and name, not just its id.
+- Always report values with the sensor's unit and name, not just its id. Take the unit from list_sensors for that specific sensor — sensors in the same location measure different quantities, so never carry one sensor's unit over to another.
 - Lead with anything that needs attention, then cover the sensors that are fine.
 - Be concise: a short paragraph or a few bullets, not a formatted document.
+- For each sensor, report only: its name, type and unit as given by list_sensors, the number of anomalies, the timestamps of the first and last, the single most extreme one (its value, unit and z-score), and the range of the ten most recent readings excluding any that are themselves anomalies. Do not list every anomaly individually — each extra number restated is a chance to transcribe it wrong.
+- That last range is meant to show how the sensor is behaving now, so it must not include anomalous values. If an anomaly is among the most recent readings, say so separately instead of folding it into the range.
+- A negative z-score means the reading was below the sensor's mean; a positive one means above. Never describe a positive z-score as a dip, drop or low outlier, and never describe a negative one as a spike.
 - Distinguish three states and never blur them: a sensor with no anomalies is normal; a sensor that could not be assessed for lack of data is unknown, not normal; a sensor with anomalies needs attention. If you use status labels or headings, they must match this.
 - Report only what the readings show. Do not offer possible physical causes, even hedged ones — no "may indicate", "suggesting", "either ... or", "possibly". State the numbers and stop.
-- Quote the timestamps of the window you examined rather than computing how long it spans. Write "from 21:42 to 03:24", not "over the past 3.5 hours".
+- Quote timestamps exactly as the tools return them, including the date, and never compute how long a span lasts. Do not reformat, shorten, or drop the date, even when several timestamps fall on the same day — a window that crosses midnight is otherwise reported as a single day.
 - End after the per-sensor findings. Do not add a closing paragraph that summarises, compares sensors, or interprets what the anomalies mean.
 """
 

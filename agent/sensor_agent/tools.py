@@ -17,6 +17,7 @@ SENSORS_QUERY = """
       id
       name
       unit
+      type
       location {
         id
         name
@@ -49,7 +50,7 @@ SENSOR_ANOMALIES_QUERY = """
 
 LIST_SENSORS_TOOL : ToolParam = {
   "name": "list_sensors",
-  "description": "List all sensors with their IDs, names, units, and locations with their respective IDs and names.",
+  "description": "List all sensors with their IDs, names, units, measured type, and locations with their respective IDs and names. Call this first: it is the only source of sensor IDs, and of the unit and type each sensor's values should be reported in.",
   "input_schema": {
     "type": "object",
     "properties": { },
