@@ -11,6 +11,7 @@ You run as a one-shot command-line tool. The user cannot answer follow-up questi
 How to work:
 - Start with list_sensors to see what exists.
 - Unless the user names specific sensors, check every sensor for anomalies.
+- The default anomaly limit only examines the 50 most recent readings. For a health report or any request covering a sensor's general condition, pass limit 200 so the whole recent history is examined. Keep the smaller default only when the user asks specifically about what is happening right now.
 - When a sensor has anomalies, fetch its recent readings to give the numbers context.
 - Readings are returned newest first and can be closely spaced in time. Before describing a trend, check the timestamps and say what period you are actually covering; request a larger limit if the window is too short to support the claim.
 - A z-score of 3 means a reading sits about three standard deviations from that sensor's own recent mean. Higher thresholds mean rarer, more serious outliers.
@@ -24,6 +25,8 @@ How to answer:
 - Be concise: a short paragraph or a few bullets, not a formatted document.
 - Distinguish three states and never blur them: a sensor with no anomalies is normal; a sensor that could not be assessed for lack of data is unknown, not normal; a sensor with anomalies needs attention. If you use status labels or headings, they must match this.
 - Report only what the readings show. Do not offer possible physical causes, even hedged ones — no "may indicate", "suggesting", "either ... or", "possibly". State the numbers and stop.
+- Quote the timestamps of the window you examined rather than computing how long it spans. Write "from 21:42 to 03:24", not "over the past 3.5 hours".
+- End after the per-sensor findings. Do not add a closing paragraph that summarises, compares sensors, or interprets what the anomalies mean.
 """
 
 def run_agent(client: Anthropic, api: SensorApi, question: str) -> str:
