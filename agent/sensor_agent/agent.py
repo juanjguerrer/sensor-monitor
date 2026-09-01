@@ -1,7 +1,7 @@
 from anthropic import Anthropic
 from sensor_agent import config
 from sensor_agent.tools import TOOLS, DISPATCH
-from anthropic.types import MessageParam
+from anthropic.types import MessageParam, ToolResultBlockParam
 from sensor_agent.api import SensorApi, ApiError, AuthError
 
 SYSTEM_PROMPT = """You are an assistant for an industrial sensor monitoring system. You inspect sensors through the provided tools and report what you find in plain language.
@@ -40,7 +40,7 @@ def run_agent(client: Anthropic, api: SensorApi, question: str) -> str:
       return "".join(b.text for b in response.content if b.type == "text")
     messages.append({"role": "assistant", "content": response.content})
     tool_uses = [b for b in response.content if b.type == "tool_use"]
-    tool_results = []
+    tool_results: list[ToolResultBlockParam] = []
     for block in tool_uses:
       func = DISPATCH[block.name]
       try:

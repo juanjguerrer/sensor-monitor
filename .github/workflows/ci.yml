@@ -60,6 +60,24 @@ jobs:
         run: npm test
       - name: Build docker image
         run: docker build -t my-image:latest .
+  agent:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./agent
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: ./agent/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      # No secrets needed: the tests use a fake API client and never import config.
+      - name: Run tests
+        run: python -m pytest
   frontend:
     runs-on: ubuntu-latest
     defaults:

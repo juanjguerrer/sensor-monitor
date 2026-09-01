@@ -1,6 +1,14 @@
-from sensor_agent.api import SensorApi
 import json
+from typing import Protocol
+
 from anthropic.types import ToolParam
+
+
+class GraphQLClient(Protocol):
+  """Anything that can run a GraphQL document. SensorApi satisfies this."""
+
+  def execute(self, query: str, variables: dict | None = None) -> dict: ...
+
 
 MAX_READINGS = 200
 SENSORS_QUERY = """
@@ -75,16 +83,16 @@ SENSOR_ANOMALIES_TOOL : ToolParam = {
   },
 }
 
-def list_sensors(api: SensorApi) -> str:
+def list_sensors(api: GraphQLClient) -> str:
     sensors_data = api.execute(SENSORS_QUERY)
     return json.dumps(sensors_data)
 
-def get_sensor_readings(api: SensorApi, sensor_id: int, limit: int = 10) -> str:
+def get_sensor_readings(api: GraphQLClient, sensor_id: int, limit: int = 10) -> str:
     limit = min(limit, MAX_READINGS)
     readings_data = api.execute(SENSOR_READINGS_QUERY, variables={"sensorId": sensor_id, "limit": limit})
     return json.dumps(readings_data)
 
-def get_sensor_anomalies(api: SensorApi, sensor_id: int, limit: int = 50, threshold: float = 3.0) -> str:
+def get_sensor_anomalies(api: GraphQLClient, sensor_id: int, limit: int = 50, threshold: float = 3.0) -> str:
     limit = min(limit, MAX_READINGS)
     anomalies_data = api.execute(SENSOR_ANOMALIES_QUERY, variables={"sensorId": sensor_id, "limit": limit, "threshold": threshold})
     return json.dumps(anomalies_data)
