@@ -21,7 +21,7 @@ rather than delegating it.
 | GitHub Actions CI | Working |
 | Angular frontend — auth, sensor CRUD, live readings, anomalies | Working |
 | Continuous deployment | Working — Render, gated on CI checks |
-| Python AI agent | Not started |
+| Python AI agent | Working — Claude tool-calling agent, scheduled daily report |
 
 ## Stack
 
@@ -952,5 +952,7 @@ file.
 - [x] The frontend served by nginx in Docker, with the API proxied onto the same origin
 - [x] Pause polling while the tab is hidden
 - [x] Continuous deployment — Render, gated on CI checks
-- [ ] Continuous deployment
-- [ ] Python agent for anomaly detection
+- [x] Python AI agent — Claude decides which sensors to inspect, then writes the report
+- [x] Read-only tools over the GraphQL API, so the agent needs no database credentials
+- [x] Tool failures returned to the model as errors it can recover from; auth failures fail fast
+- [x] Scheduled daily report via GitHub Actions, rendered into the run summary

@@ -2,7 +2,7 @@ from anthropic import Anthropic
 from sensor_agent import config
 from sensor_agent.tools import TOOLS, DISPATCH
 from anthropic.types import MessageParam
-from sensor_agent.api import SensorApi, ApiError
+from sensor_agent.api import SensorApi, ApiError, AuthError
 
 SYSTEM_PROMPT = """You are an assistant for an industrial sensor monitoring system. You inspect sensors through the provided tools and report what you find in plain language.
 
@@ -46,6 +46,9 @@ def run_agent(client: Anthropic, api: SensorApi, question: str) -> str:
       try:
           result = func(api, **block.input)
           is_error = False
+      except AuthError:
+          # Not something Claude can fix by retrying — let it reach the caller.
+          raise
       except ApiError as e:
           result = str(e)
           is_error = True

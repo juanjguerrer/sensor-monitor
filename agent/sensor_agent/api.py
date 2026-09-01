@@ -3,6 +3,10 @@ import httpx
 class ApiError(Exception):
   pass
 
+class AuthError(ApiError):
+  """Login failed. Not recoverable by retrying with different arguments."""
+  pass
+
 class SensorApi:
   def __init__(self, url, username, password):
     self.url = url
@@ -23,7 +27,10 @@ class SensorApi:
       "username": self.username,
       "password": self.password
     }
-    data = self._post(mutation, variables)
+    try:
+      data = self._post(mutation, variables)
+    except ApiError as e:
+      raise AuthError(str(e)) from e
     self.token = data["login"]["token"]
   def _token_header(self):
     if not self.token:
