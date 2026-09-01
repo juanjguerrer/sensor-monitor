@@ -5,3 +5,4 @@ dist/
 coverage/
 .claude/
 agent/.venv
+__pycache__/

@@ -1,6 +1,4 @@
 import httpx
-import os
-from dotenv import load_dotenv
 
 class ApiError(Exception):
   pass
@@ -43,27 +41,3 @@ class SensorApi:
       error_message = body["errors"][0]["message"]
       raise ApiError(error_message)
     return body["data"]
-
-if __name__ == "__main__":
-  load_dotenv()
-  GRAPHQL_URL = os.environ["GRAPHQL_URL"]
-  SENSOR_USERNAME = os.environ["SENSOR_USERNAME"]
-  SENSOR_PASSWORD = os.environ["SENSOR_PASSWORD"]
-  api = SensorApi(GRAPHQL_URL, SENSOR_USERNAME, SENSOR_PASSWORD)
-  sensors_query = """
-  query GetSensors {
-    sensors {
-      id
-      name
-      location {
-        id
-        name
-      }
-    }
-  }
-  """
-  try:
-    sensors_data = api.execute(sensors_query)
-    print(sensors_data)
-  except ApiError as e:
-    print(f"API Error: {e}")
